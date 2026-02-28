@@ -1,0 +1,11 @@
+{
+  "feishu": {
+    "appId": "cli_xxxxxx",
+    "appSecret": "xxxxxx",
+    "encryptKey": "xxxxxx",
+    "verificationToken": "xxxxxx",
+    "port": 3000,
+    "dataDir": "~/.pi/feishu",
+    "model": "anthropic/claude-sonnet-4-5"
+  }
+}
