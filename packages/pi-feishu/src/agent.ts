@@ -845,7 +845,7 @@ function createRunner(
 			});
 
 			// Set TTS scratch directory to channel's scratch folder
-			const channelScratchDir = join(workspacePath, channelId, "scratch");
+			const channelScratchDir = join(channelDir, "scratch");
 			setTtsScratchDir(channelScratchDir);
 
 			// Set TTS send voice callback - TTS tool will auto-send voice messages
