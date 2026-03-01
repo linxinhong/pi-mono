@@ -16,8 +16,7 @@ const voiceSchema = Type.Object({
 export const voiceTool: AgentTool<typeof voiceSchema> = {
 	name: "voice",
 	label: "voice",
-	description:
-		"Send an audio file as a voice message. Supports opus, mp3, wav, m4a formats. Only files from /workspace/ can be sent.",
+	description: "Send an audio file as a voice message. Supports opus, mp3, wav, m4a formats.",
 	parameters: voiceSchema,
 	execute: async (_toolCallId: string, { path }: { label: string; path: string }, signal?: AbortSignal) => {
 		if (!sendVoiceFn) {
