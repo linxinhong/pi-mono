@@ -540,6 +540,7 @@ export class FeishuBot {
 		if (!message) return;
 
 		const chatId = message.chat_id;
+		const messageId = message.message_id;
 		const msgType = message.message_type;
 		const content = message.content;
 		const sender = event.sender;
@@ -549,7 +550,9 @@ export class FeishuBot {
 
 		// Parse message content
 		let text = "";
-		let files: Array<{ name?: string; file_key?: string; file_token?: string }> | undefined;
+		let files:
+			| Array<{ name?: string; file_key?: string; file_token?: string; message_id?: string; type?: string }>
+			| undefined;
 
 		try {
 			const parsedContent = JSON.parse(content);
@@ -560,17 +563,24 @@ export class FeishuBot {
 				// Rich text message
 				text = this.extractTextFromPost(parsedContent);
 			} else if (msgType === "image") {
-				// 图片消息 - 暂时不下载，只记录
+				// 图片消息 - 需要使用消息资源 API 下载
 				const imageKey = parsedContent.image_key || "";
-				text = `[图片: ${imageKey}]`;
-				// 图片需要通过消息资源 API 下载，暂时跳过
-				files = undefined;
+				files = [
+					{
+						name: `image_${imageKey}.jpg`,
+						file_key: imageKey,
+						message_id: messageId,
+						type: "image",
+					},
+				];
+				text = "[图片]";
 			} else if (msgType === "file" || msgType === "audio" || msgType === "media") {
 				files = [
 					{
 						name: parsedContent.file_name,
 						file_key: parsedContent.file_key,
 						file_token: parsedContent.file_token,
+						type: "file",
 					},
 				];
 				text = parsedContent.file_name || "[文件]";

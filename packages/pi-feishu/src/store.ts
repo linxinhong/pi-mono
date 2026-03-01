@@ -30,6 +30,8 @@ interface PendingDownload {
 	localPath: string;
 	fileKey: string;
 	fileToken?: string;
+	messageId?: string;
+	type?: string;
 }
 
 export class ChannelStore {
@@ -71,7 +73,7 @@ export class ChannelStore {
 	 */
 	processAttachments(
 		channelId: string,
-		files: Array<{ name?: string; file_key?: string; file_token?: string }>,
+		files: Array<{ name?: string; file_key?: string; file_token?: string; message_id?: string; type?: string }>,
 		timestamp: string,
 	): Attachment[] {
 		const attachments: Attachment[] = [];
@@ -96,6 +98,8 @@ export class ChannelStore {
 				localPath,
 				fileKey: file.file_key,
 				fileToken: file.file_token,
+				messageId: file.message_id,
+				type: file.type,
 			});
 		}
 
@@ -199,7 +203,7 @@ export class ChannelStore {
 			if (!item) break;
 
 			try {
-				await this.downloadAttachment(item.localPath, item.fileKey);
+				await this.downloadAttachment(item.localPath, item.fileKey, item.messageId, item.type);
 			} catch (error) {
 				const errorMsg = error instanceof Error ? error.message : String(error);
 				log.logWarning(`Failed to download attachment`, `${item.localPath}: ${errorMsg}`);
@@ -209,7 +213,12 @@ export class ChannelStore {
 		this.isDownloading = false;
 	}
 
-	private async downloadAttachment(localPath: string, fileKey: string): Promise<void> {
+	private async downloadAttachment(
+		localPath: string,
+		fileKey: string,
+		messageId?: string,
+		type?: string,
+	): Promise<void> {
 		const filePath = join(this.workspaceDir, localPath);
 
 		const dir = join(this.workspaceDir, localPath.substring(0, localPath.lastIndexOf("/")));
@@ -219,7 +228,16 @@ export class ChannelStore {
 
 		const token = await this.getTenantAccessToken();
 
-		const response = await fetch(`https://open.feishu.cn/open-apis/im/v1/messages/${fileKey}/resources`, {
+		let url: string;
+		if (type === "image" && messageId) {
+			// 图片使用消息资源 API
+			url = `https://open.feishu.cn/open-apis/im/v1/messages/${messageId}/resources/${fileKey}`;
+		} else {
+			// 文件使用消息资源 API（file_key 就是 message_id）
+			url = `https://open.feishu.cn/open-apis/im/v1/messages/${fileKey}/resources`;
+		}
+
+		const response = await fetch(url, {
 			headers: {
 				Authorization: `Bearer ${token}`,
 			},
