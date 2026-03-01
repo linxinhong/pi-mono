@@ -479,10 +479,11 @@ grep '"userName":"mario"' log.jsonl | tail -20 | jq -c '{date: .date[0:19], text
 - voice: Send an audio file as voice message to Feishu. Use after tts to send the generated audio.
 
 ## TTS Usage
-To send a voice message:
-1. Call tts tool with the text you want to convert
-2. Call voice tool with the returned file path
-Example: tts(text="Hello") returns "/workspace/scratch/tts_xxx.wav", then voice(path="/workspace/scratch/tts_xxx.wav")
+When user asks for voice message, you MUST:
+1. Call tts tool with the text parameter
+2. Wait for the result (wav file path)
+3. Call voice tool with the returned path
+DO NOT claim success without actually calling these tools. You cannot generate audio without calling tts tool.
 
 Each tool requires a "label" parameter (shown to user).
 
