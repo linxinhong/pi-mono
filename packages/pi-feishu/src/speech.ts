@@ -1,4 +1,3 @@
-import { execSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import OpenAI from "openai";
 import { homedir } from "os";
@@ -97,36 +96,16 @@ export class SpeechRecognizer {
 	}
 
 	/**
-	 * 将 OPUS 音频转换为 PCM 格式
-	 * 需要 ffmpeg 安装在系统中
-	 */
-	private convertToPcm(opusPath: string, pcmPath: string): boolean {
-		try {
-			// 检查 ffmpeg 是否可用
-			execSync("which ffmpeg", { stdio: "ignore" });
-
-			// 转换为 PCM: 16kHz, 16bit, mono
-			execSync(`ffmpeg -y -i "${opusPath}" -f s16le -acodec pcm_s16le -ar 16000 -ac 1 "${pcmPath}"`, {
-				stdio: "ignore",
-			});
-
-			return existsSync(pcmPath);
-		} catch (error) {
-			log.logWarning("Failed to convert audio to PCM", error instanceof Error ? error.message : String(error));
-			return false;
-		}
-	}
-
-	/**
 	 * 将音频文件编码为 base64
 	 */
-	private encodeToBase64(filePath: string): string {
+	private encodeAudioFile(filePath: string): string {
 		const buffer = readFileSync(filePath);
 		return buffer.toString("base64");
 	}
 
 	/**
 	 * 调用阿里云 Qwen-ASR API 识别语音（文件转写方式）
+	 * qwen3-asr-flash 支持直接读取 opus 格式，无需转换
 	 */
 	async recognize(opusFilePath: string): Promise<string | null> {
 		if (!this.apiKey) {
@@ -134,37 +113,17 @@ export class SpeechRecognizer {
 			return null;
 		}
 
-		// 生成 PCM 文件路径
-		const pcmPath = opusFilePath.replace(/\.[^.]+$/, ".pcm");
-
-		// 转换为 PCM
-		if (!this.convertToPcm(opusFilePath, pcmPath)) {
-			log.logWarning("Failed to convert audio to PCM format");
-			return null;
-		}
-
 		try {
-			// 将 PCM 文件转换为 WAV 格式（阿里云 ASR 需要 WAV 格式）
-			const wavPath = opusFilePath.replace(/\.[^.]+$/, ".wav");
-			execSync(`ffmpeg -y -f s16le -ar 16000 -ac 1 -i "${pcmPath}" -ar 16000 -ac 1 "${wavPath}"`, {
-				stdio: "ignore",
-			});
+			// 将音频文件编码为 base64
+			const audioDataBase64 = this.encodeAudioFile(opusFilePath);
 
-			if (!existsSync(wavPath)) {
-				log.logWarning("Failed to create WAV file");
-				return null;
-			}
+			log.logInfo("[ASR] Sending audio to Qwen-ASR for transcription...");
 
 			// 使用 OpenAI 兼容 API 调用
 			const client = new OpenAI({
 				apiKey: this.apiKey,
 				baseURL: this.baseUrl,
 			});
-
-			// 将音频文件编码为 base64
-			const audioDataBase64 = this.encodeToBase64(wavPath);
-
-			log.logInfo("[ASR] Sending audio to Qwen-ASR for transcription...");
 
 			// 调用 ASR API
 			const completion = await client.chat.completions.create({
@@ -176,9 +135,9 @@ export class SpeechRecognizer {
 							{
 								type: "input_audio",
 								input_audio: {
-									data: `data:audio/wav;base64,${audioDataBase64}`,
+									data: `data:audio/opus;base64,${audioDataBase64}`,
 								},
-							} as any,
+							},
 						],
 					},
 				] as any,
