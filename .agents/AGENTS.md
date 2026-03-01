@@ -15,6 +15,7 @@ pi-mono is a monorepo containing multiple packages for building AI coding agents
 | `packages/mom` | Slack bot integration | `src/` |
 | `packages/pods` | GPU pod management | `src/` |
 | `packages/web-ui` | Web UI components | `src/` |
+| `packages/pi-feishu` | Feishu bot integration | `src/feishu.ts`, `src/agent.ts` |
 
 ### Configuration
 
@@ -112,6 +113,48 @@ tmux send-keys -t pi-test C-o  # ctrl+o
 
 # Cleanup
 tmux kill-session -t pi-test
+```
+
+## pi-feishu Deployment
+
+pi-feishu uses a Git-based deployment workflow:
+
+### Repository Structure
+- `upstream` → `https://github.com/badlogic/pi-mono` (original repo)
+- `origin` → `git@github.com:linxinhong/pi-mono.git` (fork)
+
+### Local Development & Deployment
+
+```bash
+# 1. Local development
+cd /Users/linxinhong/projects/pi-mono-work/pi-mono
+
+# 2. Commit and push to fork
+git add .
+git commit -m "feat: description"
+git push origin main
+
+# 3. Deploy to server
+ssh root@8.166.130.56 "/root/deploy-pi-feishu.sh"
+```
+
+### Server Configuration
+- Code: `/root/pi-mono`
+- Data: `/root/.pi/feishu/`
+- Logs: `/root/.pi/feishu/logs/`
+- Deploy script: `/root/deploy-pi-feishu.sh`
+
+### Useful Commands
+
+```bash
+# Check service status
+ssh root@8.166.130.56 "pm2 status"
+
+# View logs
+ssh root@8.166.130.56 "pm2 logs pi-feishu --lines 50"
+
+# Restart service
+ssh root@8.166.130.56 "pm2 restart pi-feishu"
 ```
 
 ## Style
