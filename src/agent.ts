@@ -48,6 +48,15 @@ function getModelRegistry(): ModelRegistry {
 function findModel(modelSpec: string): Model<Api> | null {
 	const registry = getModelRegistry();
 
+	// Debug: log registry state
+	const loadError = registry.getError();
+	if (loadError) {
+		log.logWarning(`ModelRegistry load error: ${loadError}`);
+	}
+	const allModels = registry.getAll();
+	const customProviders = new Set(allModels.map((m: Model<Api>) => m.provider));
+	log.logInfo(`ModelRegistry: ${allModels.length} models, providers: ${Array.from(customProviders).join(", ")}`);
+
 	// Parse "provider/model-id" format
 	const slashIndex = modelSpec.indexOf("/");
 	if (slashIndex !== -1) {
@@ -60,7 +69,6 @@ function findModel(modelSpec: string): Model<Api> | null {
 	}
 
 	// Fallback: search all models in registry
-	const allModels = registry.getAll();
 	const found = allModels.find((m: Model<Api>) => m.id === modelSpec || `${m.provider}/${m.id}` === modelSpec);
 	if (found) return found;
 
