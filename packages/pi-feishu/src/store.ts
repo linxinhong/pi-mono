@@ -53,7 +53,7 @@ export class ChannelStore {
 	}
 
 	getChannelDir(channelId: string): string {
-		const dir = join(this.workspaceDir, channelId);
+		const dir = join(this.workspaceDir, "chats", channelId);
 		if (!existsSync(dir)) {
 			mkdirSync(dir, { recursive: true });
 		}

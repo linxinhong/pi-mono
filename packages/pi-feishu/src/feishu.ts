@@ -452,7 +452,7 @@ export class FeishuBot {
 	 * Log a message to log.jsonl (SYNC)
 	 */
 	logToFile(channel: string, entry: object): void {
-		const dir = join(this.workingDir, channel);
+		const dir = join(this.workingDir, "chats", channel);
 		if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 		appendFileSync(join(dir, "log.jsonl"), `${JSON.stringify(entry)}\n`);
 	}

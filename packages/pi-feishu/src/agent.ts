@@ -136,7 +136,7 @@ function getImageMimeType(filename: string): string | undefined {
 
 function getMemory(channelDir: string): string {
 	const parts: string[] = [];
-	const workspaceDir = join(channelDir, "..");
+	const workspaceDir = join(channelDir, "..", "..");
 
 	// Root level memory files
 	const memoryFiles = [
@@ -199,7 +199,7 @@ function loadFeishuSkills(channelDir: string, workspacePath: string): Skill[] {
 	const skillMap = new Map<string, Skill>();
 
 	// channelDir = /workspace/oc_xxx, workspace = /workspace
-	const hostWorkspacePath = join(channelDir, "..");
+	const hostWorkspacePath = join(channelDir, "..", "..");
 
 	const translatePath = (hostPath: string): string => {
 		if (hostPath.startsWith(hostWorkspacePath)) {
@@ -506,7 +506,7 @@ export function getOrCreateRunner(sandboxConfig: SandboxConfig, channelId: strin
 function createRunner(sandboxConfig: SandboxConfig, channelId: string, channelDir: string): AgentRunner {
 	const executor = createExecutor(sandboxConfig);
 	// channelDir = /workspace/oc_xxx, 需要获取 /workspace
-	const workspacePath = executor.getWorkspacePath(join(channelDir, ".."));
+	const workspacePath = executor.getWorkspacePath(join(channelDir, "..", ".."));
 
 	const tools = createFeishuTools(executor, workspacePath);
 
@@ -516,7 +516,7 @@ function createRunner(sandboxConfig: SandboxConfig, channelId: string, channelDi
 
 	const contextFile = join(channelDir, "context.jsonl");
 	const sessionManager = SessionManager.open(contextFile, channelDir);
-	const settingsManager = new FeishuSettingsManager(join(channelDir, ".."));
+	const settingsManager = new FeishuSettingsManager(join(channelDir, "..", ".."));
 
 	// Use shared ModelRegistry (loads models.json from ~/.pi/agent)
 	const modelRegistry = getModelRegistry();
@@ -929,14 +929,14 @@ function translateToHostPath(
 	channelId: string,
 ): string {
 	if (workspacePath === "/workspace") {
-		// 容器内: /workspace/oc_xxx/... -> 主机: channelDir/...
-		const channelPrefix = `/workspace/${channelId}/`;
+		// 容器内: /workspace/chats/oc_xxx/... -> 主机: channelDir/...
+		const channelPrefix = `/workspace/chats/${channelId}/`;
 		if (containerPath.startsWith(channelPrefix)) {
 			return join(channelDir, containerPath.slice(channelPrefix.length));
 		}
-		// 容器内: /workspace/... -> 主机: workspaceDir/... (channelDir/..)
+		// 容器内: /workspace/... -> 主机: workspaceDir/... (channelDir/../..)
 		if (containerPath.startsWith("/workspace/")) {
-			return join(channelDir, "..", containerPath.slice("/workspace/".length));
+			return join(channelDir, "..", "..", containerPath.slice("/workspace/".length));
 		}
 	}
 	return containerPath;

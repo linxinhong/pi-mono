@@ -19,7 +19,7 @@ const PI_DIR = join(homedir(), ".pi");
 const AGENT_DIR = join(PI_DIR, "agent");
 const CHANNELS_CONFIG_PATH = join(AGENT_DIR, "channels.json");
 const DEFAULT_WORKSPACE_DIR = join(PI_DIR, "feishu"); // 工作空间根目录
-const CHANNELS_SUBDIR = ""; // 频道目录直接放在 workdir 下
+const CHANNELS_SUBDIR = "chats"; // 频道目录放在 workdir/chats 下
 
 // Load .env from ~/.pi/agent/.env if exists
 const envPath = join(AGENT_DIR, ".env");
