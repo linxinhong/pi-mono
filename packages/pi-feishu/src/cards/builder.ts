@@ -1,6 +1,6 @@
 /**
  * Card Builder Functions
- * 卡片构建函数
+ * 卡片构建函数 (JSON 2.0)
  */
 
 import type { CardContent, CardElement } from "./types.js";
@@ -46,40 +46,46 @@ export function buildCodeBlock(code: string, language?: string): CardElement {
 }
 
 /**
- * 构建简单文本卡片
+ * 构建简单文本卡片 (JSON 2.0)
  */
 export function buildTextCard(title: string, content: string): CardContent {
 	return {
-		config: { wide_screen_mode: true },
+		schema: "2.0",
+		config: { width_mode: "fill", update_multi: true },
 		header: { title: { content: title, tag: "plain_text" } },
-		elements: [
-			{
-				tag: "div",
-				text: { content, tag: "lark_md" },
-			},
-		],
+		body: {
+			elements: [
+				{
+					tag: "div",
+					text: { content, tag: "lark_md" },
+				},
+			],
+		},
 	};
 }
 
 /**
- * 构建代码卡片
+ * 构建代码卡片 (JSON 2.0)
  */
 export function buildCodeCard(title: string, code: string, language?: string): CardContent {
 	const langTag = language ? `\`\`\`${language}\n${code}\n\`\`\`` : `\`\`\`\n${code}\n\`\`\``;
 	return {
-		config: { wide_screen_mode: true },
+		schema: "2.0",
+		config: { width_mode: "fill", update_multi: true },
 		header: { title: { content: title, tag: "plain_text" } },
-		elements: [
-			{
-				tag: "div",
-				text: { content: langTag, tag: "lark_md" },
-			},
-		],
+		body: {
+			elements: [
+				{
+					tag: "div",
+					text: { content: langTag, tag: "lark_md" },
+				},
+			],
+		},
 	};
 }
 
 /**
- * 构建结构化结果卡片
+ * 构建结构化结果卡片 (JSON 2.0)
  */
 export function buildStructuredCard(
 	title: string,
@@ -104,9 +110,12 @@ export function buildStructuredCard(
 	}
 
 	return {
-		config: { wide_screen_mode: true },
+		schema: "2.0",
+		config: { width_mode: "fill", update_multi: true },
 		header: { title: { content: title, tag: "plain_text" } },
-		elements: elements.length > 0 ? elements : [buildDiv("(无内容)")],
+		body: {
+			elements: elements.length > 0 ? elements : [buildDiv("(无内容)")],
+		},
 	};
 }
 

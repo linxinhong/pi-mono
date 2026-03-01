@@ -263,8 +263,11 @@ export class FeishuBot {
 
 	private buildTextCard(text: string): string {
 		return JSON.stringify({
-			config: { wide_screen_mode: true, update_multi: true },
-			elements: [{ tag: "div", text: { tag: "lark_md", content: text } }],
+			schema: "2.0",
+			config: { width_mode: "fill", update_multi: true },
+			body: {
+				elements: [{ tag: "div", text: { tag: "lark_md", content: text } }],
+			},
 		});
 	}
 
