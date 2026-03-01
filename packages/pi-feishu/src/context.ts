@@ -26,11 +26,13 @@ interface LogMessage {
 
 /**
  * Sync user messages from log.jsonl to SessionManager.
+ * @param maxMessages Maximum number of messages to sync (from most recent). Default: 20. Set to 0 to sync all.
  */
 export function syncLogToSessionManager(
 	sessionManager: SessionManager,
 	channelDir: string,
 	excludeTs?: string,
+	maxMessages: number = 20,
 ): number {
 	const logFile = join(channelDir, "log.jsonl");
 
@@ -74,7 +76,12 @@ export function syncLogToSessionManager(
 	}
 
 	const logContent = readFileSync(logFile, "utf-8");
-	const logLines = logContent.trim().split("\n").filter(Boolean);
+	let logLines = logContent.trim().split("\n").filter(Boolean);
+
+	// Limit to the most recent N lines if maxMessages is set
+	if (maxMessages > 0 && logLines.length > maxMessages) {
+		logLines = logLines.slice(-maxMessages);
+	}
 
 	const newMessages: Array<{ timestamp: number; message: UserMessage }> = [];
 

@@ -1,5 +1,12 @@
 import { Agent, type AgentEvent } from "@mariozechner/pi-agent-core";
-import { type Api, getModel, type ImageContent, type Model } from "@mariozechner/pi-ai";
+import {
+	type Api,
+	type AssistantMessage,
+	getModel,
+	type ImageContent,
+	type Model,
+	type UserMessage,
+} from "@mariozechner/pi-ai";
 import {
 	AgentSession,
 	AuthStorage,
@@ -16,7 +23,7 @@ import {
 import { existsSync, readFileSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { FeishuSettingsManager, syncLogToSessionManager } from "./context.js";
+import { FeishuSettingsManager } from "./context.js";
 import type { ChannelInfo, FeishuContext, UserInfo } from "./feishu.js";
 import * as log from "./log.js";
 import { createExecutor, type SandboxConfig } from "./sandbox.js";
@@ -511,11 +518,12 @@ export function getOrCreateRunner(
 	channelId: string,
 	channelDir: string,
 	showThinking: boolean,
+	maxHistoryMessages: number = 20,
 ): AgentRunner {
 	const existing = channelRunners.get(channelId);
 	if (existing) return existing;
 
-	const runner = createRunner(sandboxConfig, channelId, channelDir, showThinking);
+	const runner = createRunner(sandboxConfig, channelId, channelDir, showThinking, maxHistoryMessages);
 	channelRunners.set(channelId, runner);
 	return runner;
 }
@@ -525,6 +533,7 @@ function createRunner(
 	channelId: string,
 	channelDir: string,
 	showThinking: boolean,
+	maxHistoryMessages: number = 20,
 ): AgentRunner {
 	const executor = createExecutor(sandboxConfig);
 	// channelDir = /workspace/oc_xxx, 需要获取 /workspace
@@ -555,9 +564,16 @@ function createRunner(
 	});
 
 	const loadedSession = sessionManager.buildSessionContext();
-	if (loadedSession.messages.length > 0) {
-		agent.replaceMessages(loadedSession.messages);
-		log.logInfo(`[${channelId}] Loaded ${loadedSession.messages.length} messages from context.jsonl`);
+	const initialMessages = loadedSession.messages;
+	const limitedInitialMessages =
+		maxHistoryMessages > 0 && initialMessages.length > maxHistoryMessages
+			? initialMessages.slice(-maxHistoryMessages)
+			: initialMessages;
+	if (limitedInitialMessages.length > 0) {
+		agent.replaceMessages(limitedInitialMessages);
+		log.logInfo(
+			`[${channelId}] Loaded ${limitedInitialMessages.length} messages from context.jsonl (max: ${maxHistoryMessages})`,
+		);
 	}
 
 	const resourceLoader: ResourceLoader = {
@@ -750,15 +766,13 @@ function createRunner(
 		): Promise<{ stopReason: string; errorMessage?: string }> {
 			await mkdir(channelDir, { recursive: true });
 
-			const syncedCount = syncLogToSessionManager(sessionManager, channelDir, ctx.message.ts);
-			if (syncedCount > 0) {
-				log.logInfo(`[${channelId}] Synced ${syncedCount} messages from log.jsonl`);
-			}
-
-			const reloadedSession = sessionManager.buildSessionContext();
-			if (reloadedSession.messages.length > 0) {
-				agent.replaceMessages(reloadedSession.messages);
-				log.logInfo(`[${channelId}] Reloaded ${reloadedSession.messages.length} messages from context`);
+			// Load history directly from log.jsonl with limit
+			const historyMessages = loadHistoryFromLog(channelDir, maxHistoryMessages, ctx.message.ts);
+			if (historyMessages.length > 0) {
+				agent.replaceMessages(historyMessages);
+				log.logInfo(
+					`[${channelId}] Loaded ${historyMessages.length} messages from log.jsonl (max: ${maxHistoryMessages})`,
+				);
 			}
 
 			const memory = getMemory(channelDir);
@@ -946,6 +960,89 @@ function createRunner(
 	};
 }
 
+interface LogMessage {
+	date?: string;
+	ts?: string;
+	user?: string;
+	userName?: string;
+	text?: string;
+	isBot?: boolean;
+}
+
+/**
+ * Load recent conversation history from log.jsonl
+ * Loads the last N messages (default: 5) to reduce context length
+ * @param channelDir - Channel directory containing log.jsonl
+ * @param maxMessages - Maximum number of messages to load (default: 5)
+ * @param excludeTs - Exclude messages with this timestamp (current message)
+ */
+function loadHistoryFromLog(
+	channelDir: string,
+	maxMessages: number = 5,
+	excludeTs?: string,
+): Array<UserMessage | AssistantMessage> {
+	const logFile = join(channelDir, "log.jsonl");
+
+	if (!existsSync(logFile)) {
+		return [];
+	}
+
+	try {
+		const logContent = readFileSync(logFile, "utf-8");
+		let logLines = logContent.trim().split("\n").filter(Boolean);
+
+		// Limit to the most recent N messages
+		if (maxMessages > 0 && logLines.length > maxMessages) {
+			logLines = logLines.slice(-maxMessages);
+		}
+
+		const messages: Array<UserMessage | AssistantMessage> = [];
+
+		for (const line of logLines) {
+			try {
+				const logMsg: LogMessage = JSON.parse(line);
+
+				const ts = logMsg.ts;
+				const date = logMsg.date;
+				if (!ts || !date) continue;
+
+				// Exclude current message
+				if (excludeTs && ts === excludeTs) continue;
+
+				const msgTime = new Date(date).getTime() || Date.now();
+				const userName = logMsg.userName || logMsg.user || "unknown";
+				const text = logMsg.text || "";
+
+				if (logMsg.isBot) {
+					// Bot message
+					messages.push({
+						role: "assistant",
+						content: [{ type: "text", text }],
+						timestamp: msgTime,
+					} as AssistantMessage);
+				} else {
+					// User message
+					messages.push({
+						role: "user",
+						content: [{ type: "text", text: `[${userName}]: ${text}` }],
+						timestamp: msgTime,
+					} as UserMessage);
+				}
+			} catch {
+				// Skip malformed lines
+			}
+		}
+
+		// Sort by timestamp
+		messages.sort((a, b) => a.timestamp - b.timestamp);
+
+		return messages;
+	} catch (error) {
+		log.logWarning("Failed to load history from log.jsonl", error instanceof Error ? error.message : String(error));
+		return [];
+	}
+}
+
 function translateToHostPath(
 	containerPath: string,
 	channelDir: string,
@@ -953,12 +1050,12 @@ function translateToHostPath(
 	channelId: string,
 ): string {
 	if (workspacePath === "/workspace") {
-		// 容器内: /workspace/chats/oc_xxx/... -> 主机: channelDir/...
+		// 容器内：/workspace/chats/oc_xxx/... -> 主机：channelDir/...
 		const channelPrefix = `/workspace/chats/${channelId}/`;
 		if (containerPath.startsWith(channelPrefix)) {
 			return join(channelDir, containerPath.slice(channelPrefix.length));
 		}
-		// 容器内: /workspace/... -> 主机: workspaceDir/... (channelDir/../..)
+		// 容器内：/workspace/... -> 主机：workspaceDir/... (channelDir/../..)
 		if (containerPath.startsWith("/workspace/")) {
 			return join(channelDir, "..", "..", containerPath.slice("/workspace/".length));
 		}

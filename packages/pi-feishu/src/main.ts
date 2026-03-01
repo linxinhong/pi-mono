@@ -37,6 +37,11 @@ interface FeishuChannelConfig {
 	dataDir?: string;
 	model?: string;
 	showThinking?: boolean;
+	/**
+	 * Maximum number of historical messages to load from log.jsonl.
+	 * Default: 20. Set to 0 to disable history loading.
+	 */
+	maxHistoryMessages?: number;
 }
 
 interface ChannelsConfig {
@@ -161,6 +166,7 @@ interface ChannelState {
 const channelStates = new Map<string, ChannelState>();
 
 const SHOW_THINKING = feishuConfig?.showThinking ?? false;
+const MAX_HISTORY_MESSAGES = feishuConfig?.maxHistoryMessages ?? 5;
 
 function getState(channelId: string): ChannelState {
 	let state = channelStates.get(channelId);
@@ -168,7 +174,7 @@ function getState(channelId: string): ChannelState {
 		const channelDir = join(workspaceDir, CHANNELS_SUBDIR, channelId);
 		state = {
 			running: false,
-			runner: getOrCreateRunner(sandbox, channelId, channelDir, SHOW_THINKING),
+			runner: getOrCreateRunner(sandbox, channelId, channelDir, SHOW_THINKING, MAX_HISTORY_MESSAGES),
 			store: sharedStore,
 			stopRequested: false,
 		};
