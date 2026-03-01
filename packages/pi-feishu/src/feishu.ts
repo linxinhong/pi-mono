@@ -580,6 +580,7 @@ export class FeishuBot {
 						name: parsedContent.file_name,
 						file_key: parsedContent.file_key,
 						file_token: parsedContent.file_token,
+						message_id: messageId,
 						type: "file",
 					},
 				];
