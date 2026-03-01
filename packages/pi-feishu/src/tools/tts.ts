@@ -134,7 +134,7 @@ export const ttsTool: AgentTool<typeof ttsSchema> = {
 	name: "tts",
 	label: "tts",
 	description:
-		"Convert text to speech audio file. Returns the path to the generated wav file. Use voice tool to send the audio.",
+		"Convert text to speech. ALWAYS use this tool for TTS, NEVER use bash/curl to call TTS API directly. Returns wav file path that can be used with voice tool.",
 	parameters: ttsSchema,
 	execute: async (
 		_toolCallId: string,

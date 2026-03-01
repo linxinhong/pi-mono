@@ -29,7 +29,7 @@ import type { ChannelInfo, FeishuContext, UserInfo } from "./feishu.js";
 import * as log from "./log.js";
 import { createExecutor, type SandboxConfig } from "./sandbox.js";
 import type { ChannelStore } from "./store.js";
-import { createFeishuTools, setSendVoiceFunction, setUploadFunction } from "./tools/index.js";
+import { createFeishuTools, setSendVoiceFunction, setTtsScratchDir, setUploadFunction } from "./tools/index.js";
 
 // Cached model - set via setModel() before use
 let resolvedModel: Model<Api> | null = null;
@@ -841,6 +841,10 @@ function createRunner(
 				const hostPath = translateToHostPath(filePath, channelDir, workspacePath, channelId);
 				return ctx.sendVoiceMessage(hostPath);
 			});
+
+			// Set TTS scratch directory to channel's scratch folder
+			const channelScratchDir = join(workspacePath, channelId, "scratch");
+			setTtsScratchDir(channelScratchDir);
 
 			runState.ctx = ctx;
 			runState.logCtx = {
