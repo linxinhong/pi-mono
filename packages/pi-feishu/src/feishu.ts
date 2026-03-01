@@ -67,6 +67,8 @@ export interface FeishuContext {
 	respondInThread: (text: string) => Promise<void>;
 	setTyping: (isTyping: boolean) => Promise<void>;
 	uploadFile: (filePath: string, title?: string) => Promise<void>;
+	uploadImage: (imagePath: string) => Promise<string>;
+	sendImage: (imageKey: string) => Promise<string>;
 	setWorking: (working: boolean) => Promise<void>;
 	deleteMessage: () => Promise<void>;
 }
@@ -380,6 +382,70 @@ export class FeishuBot {
 				},
 			});
 		}
+	}
+
+	/**
+	 * 上传图片到飞书
+	 * @param imagePath 图片文件路径
+	 * @returns image_key
+	 */
+	async uploadImage(imagePath: string): Promise<string> {
+		const result = await this.client.im.image.create({
+			data: {
+				image_type: "message",
+				image: readFileSync(imagePath),
+			},
+		});
+
+		if (!result || !result.image_key) {
+			throw new Error("Failed to upload image: no image_key returned");
+		}
+
+		return result.image_key;
+	}
+
+	/**
+	 * 下载图片
+	 * @param imageKey 图片的 key
+	 * @returns 图片 Buffer
+	 */
+	async downloadImage(imageKey: string): Promise<Buffer> {
+		const result = await this.client.im.image.get({
+			path: { image_key: imageKey },
+		});
+
+		// 使用 getReadableStream 获取图片流并转换为 Buffer
+		const stream = result.getReadableStream();
+		const chunks: Buffer[] = [];
+
+		return new Promise((resolve, reject) => {
+			stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+			stream.on("end", () => resolve(Buffer.concat(chunks)));
+			stream.on("error", reject);
+		});
+	}
+
+	/**
+	 * 发送图片消息到频道
+	 * @param channel 频道 ID
+	 * @param imageKey 图片的 key
+	 * @returns 消息 ID
+	 */
+	async sendImage(channel: string, imageKey: string): Promise<string> {
+		const result = await this.client.im.message.create({
+			params: { receive_id_type: "chat_id" },
+			data: {
+				receive_id: channel,
+				msg_type: "image",
+				content: JSON.stringify({ image_key: imageKey }),
+			},
+		});
+
+		if (result.code !== 0) {
+			throw new Error(`Failed to send image: ${result.msg}`);
+		}
+
+		return result.data?.message_id || "";
 	}
 
 	/**

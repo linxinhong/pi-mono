@@ -249,6 +249,14 @@ function createFeishuContext(event: FeishuEvent, feishu: FeishuBot, _state: Chan
 			await feishu.uploadFile(event.channel, filePath, title);
 		},
 
+		uploadImage: async (imagePath: string): Promise<string> => {
+			return feishu.uploadImage(imagePath);
+		},
+
+		sendImage: async (imageKey: string): Promise<string> => {
+			return feishu.sendImage(event.channel, imageKey);
+		},
+
 		setWorking: async (working: boolean) => {
 			if (!working && statusMessageId) {
 				// Update status to "completed"
