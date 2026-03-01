@@ -138,16 +138,15 @@ function getMemory(channelDir: string): string {
 	const parts: string[] = [];
 	const workspaceDir = join(channelDir, "..", "..");
 
-	// Root level memory files
-	const memoryFiles = [
-		{ path: "PROFILE.md", title: "User Profile" },
-		{ path: "SOUL.md", title: "Core Identity" },
-		{ path: "IDENTITY.md", title: "Identity Details" },
-		{ path: "TOOLS.md", title: "Tool Guidelines" },
-		{ path: "MEMORY.md", title: "Long-term Memory" },
+	// Boot files (identity and behavior)
+	const bootFiles = [
+		{ path: "boot/profile.md", title: "User Profile" },
+		{ path: "boot/soul.md", title: "Core Identity" },
+		{ path: "boot/identity.md", title: "Identity Details" },
+		{ path: "boot/tools.md", title: "Tool Guidelines" },
 	];
 
-	for (const { path, title } of memoryFiles) {
+	for (const { path, title } of bootFiles) {
 		const filePath = join(workspaceDir, path);
 		if (existsSync(filePath)) {
 			try {
@@ -158,6 +157,19 @@ function getMemory(channelDir: string): string {
 			} catch (error) {
 				log.logWarning(`Failed to read ${path}`, `${filePath}: ${error}`);
 			}
+		}
+	}
+
+	// Long-term memory
+	const memoryPath = join(workspaceDir, "memory", "memory.md");
+	if (existsSync(memoryPath)) {
+		try {
+			const content = readFileSync(memoryPath, "utf-8").trim();
+			if (content) {
+				parts.push(`### Long-term Memory\n${content}`);
+			}
+		} catch (error) {
+			log.logWarning("Failed to read memory.md", `${memoryPath}: ${error}`);
 		}
 	}
 

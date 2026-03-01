@@ -137,7 +137,7 @@ export class MemoryStore {
 			}
 			return "daily";
 		}
-		if (filePath.endsWith("PROFILE.md")) {
+		if (filePath.includes("/boot/profile.md")) {
 			return "profile";
 		}
 		return "longterm";
@@ -214,16 +214,19 @@ export class MemoryStore {
 	private findMemoryFiles(): string[] {
 		const files: string[] = [];
 
-		// Root level files
-		const rootFiles = ["PROFILE.md", "MEMORY.md", "SOUL.md", "IDENTITY.md", "TOOLS.md"];
-		for (const file of rootFiles) {
-			const path = join(this.workspaceDir, file);
-			if (existsSync(path)) {
-				files.push(path);
+		// Boot directory files (identity and behavior)
+		const bootDir = join(this.workspaceDir, "boot");
+		if (existsSync(bootDir)) {
+			const bootFiles = ["profile.md", "soul.md", "identity.md", "tools.md"];
+			for (const file of bootFiles) {
+				const path = join(bootDir, file);
+				if (existsSync(path)) {
+					files.push(path);
+				}
 			}
 		}
 
-		// Memory directory (daily logs and compressed)
+		// Memory directory (long-term memory, daily logs and compressed)
 		const memoryDir = join(this.workspaceDir, "memory");
 		if (existsSync(memoryDir)) {
 			const addFromDir = (dir: string) => {
