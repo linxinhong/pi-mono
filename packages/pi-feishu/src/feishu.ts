@@ -366,35 +366,45 @@ export class FeishuBot {
 			return;
 		}
 
-		// 非图片文件，使用文件上传 API
+		// 非图片文件，使用 IM 文件上传 API
+		// 文件类型映射
+		const fileTypeMap: Record<string, string> = {
+			pdf: "pdf",
+			doc: "doc",
+			docx: "doc",
+			xls: "xls",
+			xlsx: "xls",
+			ppt: "ppt",
+			pptx: "ppt",
+			mp4: "mp4",
+			opus: "opus",
+		};
+		const fileType = fileTypeMap[ext] || "stream";
+
 		const fileContent = readFileSync(filePath);
 
-		// Upload file to Feishu using the drive file upload API
-		// Note: The SDK types may not be complete, use type assertion
-		const uploadResult = await (this.client.drive.file as any).upload({
+		// 使用 IM 文件上传 API
+		const uploadResult = await (this.client.im.file as any).create({
 			data: {
-				file: fileContent,
+				file_type: fileType,
 				file_name: fileName,
-				parent_type: "ccm_import_open",
+				file: fileContent,
 			},
 		});
 
-		if (uploadResult.code !== 0) {
-			throw new Error(`Failed to upload file: ${uploadResult.msg}`);
+		if (!uploadResult || !uploadResult.file_key) {
+			throw new Error("Failed to upload file: no file_key returned");
 		}
 
-		// Send file key to channel
-		const fileKey = uploadResult.data?.file_key;
-		if (fileKey) {
-			await this.client.im.message.create({
-				params: { receive_id_type: "chat_id" },
-				data: {
-					receive_id: channel,
-					msg_type: "file",
-					content: JSON.stringify({ file_key: fileKey }),
-				},
-			});
-		}
+		// 发送文件消息
+		await this.client.im.message.create({
+			params: { receive_id_type: "chat_id" },
+			data: {
+				receive_id: channel,
+				msg_type: "file",
+				content: JSON.stringify({ file_key: uploadResult.file_key }),
+			},
+		});
 	}
 
 	/**
