@@ -17,8 +17,9 @@ import { ChannelStore } from "./store.js";
 
 const PI_DIR = join(homedir(), ".pi");
 const AGENT_DIR = join(PI_DIR, "agent");
-const CHANNELS_CONFIG_PATH = join(AGENT_DIR, "channels.json");
-const DEFAULT_WORKSPACE_DIR = join(PI_DIR, "feishu"); // 工作空间根目录
+const FEISHU_DIR = join(PI_DIR, "feishu");
+const CHANNELS_CONFIG_PATH = join(FEISHU_DIR, "feishu.json");
+const DEFAULT_WORKSPACE_DIR = FEISHU_DIR; // 工作空间根目录
 const CHANNELS_SUBDIR = "chats"; // 频道目录放在 workdir/chats 下
 
 // Load .env from ~/.pi/agent/.env if exists
@@ -78,7 +79,7 @@ function parseArgs(): ParsedArgs {
 			console.error("  data-directory    - Data directory (default: ~/.pi/feishu)");
 			console.error("  --sandbox         - Sandbox mode: host (default) or docker:<name>");
 			console.error("");
-			console.error("Config file: ~/.pi/agent/channels.json");
+			console.error("Config file: ~/.pi/feishu/feishu.json");
 			console.error(
 				JSON.stringify(
 					{ feishu: { appId: "cli_xxx", appSecret: "xxx", port: 3000, model: "groq/qwen-qwq-32b" } },
