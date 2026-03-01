@@ -3,6 +3,7 @@ import express, { type Request, type Response } from "express";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { basename, join } from "path";
 import * as log from "./log.js";
+import { SpeechRecognizer } from "./speech.js";
 import type { Attachment, ChannelStore } from "./store.js";
 
 export type { CardContent, CardElement } from "./cards/index.js";
@@ -146,6 +147,7 @@ export class FeishuBot {
 	private handler: FeishuHandler;
 	private workingDir: string;
 	private store: ChannelStore;
+	private speechRecognizer: SpeechRecognizer;
 	private app: ReturnType<typeof express> | null = null;
 	private botUserId: string | null = null;
 	private startupTs: string | null = null;
@@ -158,6 +160,7 @@ export class FeishuBot {
 		this.handler = handler;
 		this.workingDir = config.workingDir;
 		this.store = config.store;
+		this.speechRecognizer = new SpeechRecognizer(config.appId, config.appSecret);
 		this.client = new lark.Client({
 			appId: config.appId,
 			appSecret: config.appSecret,
@@ -597,7 +600,7 @@ export class FeishuBot {
 						file_key: parsedContent.file_key,
 						file_token: parsedContent.file_token,
 						message_id: messageId,
-						type: "file",
+						type: msgType === "audio" ? "audio" : "file",
 					},
 				];
 				text = parsedContent.file_name || "[语音]";
@@ -622,8 +625,31 @@ export class FeishuBot {
 			files,
 		};
 
-		// Log message
+		// Log message and process attachments
 		feishuEvent.attachments = this.logUserMessage(feishuEvent);
+
+		// Handle audio speech recognition
+		if (msgType === "audio" && feishuEvent.attachments && feishuEvent.attachments.length > 0) {
+			const audioAttachment = feishuEvent.attachments[0];
+			const audioPath = join(this.workingDir, audioAttachment.local);
+
+			// Wait for download to complete (attachments are downloaded async)
+			// Try to recognize speech after a short delay
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+
+			if (existsSync(audioPath)) {
+				log.logInfo(`[${chatId}] Recognizing speech from audio: ${audioPath}`);
+				const recognizedText = await this.speechRecognizer.recognize(audioPath);
+				if (recognizedText) {
+					log.logInfo(`[${chatId}] Speech recognized: ${recognizedText}`);
+					feishuEvent.text = `[语音] ${recognizedText}`;
+				} else {
+					log.logWarning(`[${chatId}] Speech recognition failed or returned empty`);
+				}
+			} else {
+				log.logWarning(`[${chatId}] Audio file not found: ${audioPath}`);
+			}
+		}
 
 		// Skip old messages
 		if (this.startupTs && feishuEvent.ts < this.startupTs) {
