@@ -989,16 +989,29 @@ function loadHistoryFromLog(
 
 	try {
 		const logContent = readFileSync(logFile, "utf-8");
-		let logLines = logContent.trim().split("\n").filter(Boolean);
+		const logLines = logContent.trim().split("\n").filter(Boolean);
+
+		// Filter out current message first, then take the last N messages
+		let filteredLines = logLines;
+		if (excludeTs) {
+			filteredLines = logLines.filter((line) => {
+				try {
+					const logMsg: LogMessage = JSON.parse(line);
+					return logMsg.ts !== excludeTs;
+				} catch {
+					return true; // Keep malformed lines
+				}
+			});
+		}
 
 		// Limit to the most recent N messages
-		if (maxMessages > 0 && logLines.length > maxMessages) {
-			logLines = logLines.slice(-maxMessages);
+		if (maxMessages > 0 && filteredLines.length > maxMessages) {
+			filteredLines = filteredLines.slice(-maxMessages);
 		}
 
 		const messages: Array<UserMessage | AssistantMessage> = [];
 
-		for (const line of logLines) {
+		for (const line of filteredLines) {
 			try {
 				const logMsg: LogMessage = JSON.parse(line);
 
