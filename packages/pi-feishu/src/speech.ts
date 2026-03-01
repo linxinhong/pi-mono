@@ -15,6 +15,9 @@ interface ModelsConfig {
 		bailian?: {
 			apiKey?: string;
 		};
+		aliyun?: {
+			apiKey?: string;
+		};
 	};
 }
 
@@ -32,21 +35,37 @@ export class SpeechRecognizer {
 
 	/**
 	 * 获取 API Key
-	 * 优先级: DASHSCOPE_API_KEY 环境变量 > ~/.pi/agent/models.json 中的 bailian provider
+	 * 优先级：DASHSCOPE_API_KEY 环境变量 > ALIYUN_API_KEY 环境变量 > ~/.pi/agent/models.json 中的 aliyun provider > bailian provider
 	 */
 	private getApiKey(): string {
-		// 1. 优先使用环境变量
+		// 1. 优先使用环境变量 DASHSCOPE_API_KEY
 		const envKey = process.env.DASHSCOPE_API_KEY;
 		if (envKey) {
 			return envKey;
 		}
 
-		// 2. 从 models.json 读取 bailian provider 的 apiKey
+		// 2. 使用环境变量 ALIYUN_API_KEY
+		const aliyunEnvKey = process.env.ALIYUN_API_KEY;
+		if (aliyunEnvKey) {
+			log.logInfo("[ASR] Using API key from ALIYUN_API_KEY environment variable");
+			return aliyunEnvKey;
+		}
+
+		// 3. 从 models.json 读取 aliyun provider 的 apiKey
 		try {
 			const modelsPath = join(homedir(), ".pi", "agent", "models.json");
 			if (existsSync(modelsPath)) {
 				const content = readFileSync(modelsPath, "utf-8");
 				const config = JSON.parse(content) as ModelsConfig;
+
+				// 优先使用 aliyun provider
+				const aliyunKey = config?.providers?.aliyun?.apiKey;
+				if (aliyunKey) {
+					log.logInfo("[ASR] Using API key from models.json (aliyun provider)");
+					return aliyunKey;
+				}
+
+				// 回退到 bailian provider
 				const bailianKey = config?.providers?.bailian?.apiKey;
 				if (bailianKey) {
 					log.logInfo("[ASR] Using API key from models.json (bailian provider)");
