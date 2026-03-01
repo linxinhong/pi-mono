@@ -44,8 +44,15 @@ const ttsSchema = Type.Object({
 // Scratch directory for saving generated audio files
 let scratchDir = "/workspace/scratch";
 
+// Callback to automatically send voice after generating audio
+let sendVoiceCallback: ((audioPath: string) => Promise<string>) | null = null;
+
 export function setTtsScratchDir(dir: string): void {
 	scratchDir = dir;
+}
+
+export function setSendVoiceCallback(fn: (audioPath: string) => Promise<string>): void {
+	sendVoiceCallback = fn;
 }
 
 /**
@@ -220,6 +227,16 @@ export const ttsTool: AgentTool<typeof ttsSchema> = {
 		writeFileSync(audioPath, audioBuffer);
 
 		log.logInfo(`[TTS] Audio saved to: ${audioPath} (${audioBuffer.length} bytes)`);
+
+		// Auto-send voice message if callback is configured
+		if (sendVoiceCallback) {
+			const messageId = await sendVoiceCallback(audioPath);
+			log.logInfo(`[TTS] Voice message sent, messageId: ${messageId}`);
+			return {
+				content: [{ type: "text" as const, text: `Sent voice message` }],
+				details: { messageId, path: audioPath, size: audioBuffer.length, voice: selectedVoice },
+			};
+		}
 
 		return {
 			content: [{ type: "text" as const, text: `Generated audio: ${audioPath}` }],

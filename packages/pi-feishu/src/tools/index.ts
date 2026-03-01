@@ -11,7 +11,7 @@ import { voiceTool } from "./voice.js";
 import { createWriteTool } from "./write.js";
 
 export { setUploadFunction } from "./attach.js";
-export { setTtsScratchDir } from "./tts.js";
+export { setSendVoiceCallback, setTtsScratchDir } from "./tts.js";
 export { setSendVoiceFunction } from "./voice.js";
 
 export function createFeishuTools(executor: Executor, workspaceDir: string): AgentTool<any>[] {
