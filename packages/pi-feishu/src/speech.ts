@@ -1,5 +1,7 @@
 import { execSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 import WebSocket from "ws";
 import * as log from "./log.js";
 
@@ -8,14 +10,54 @@ import * as log from "./log.js";
  * 文档: https://help.aliyun.com/zh/model-studio/developer-reference/qwen-asr
  */
 
+interface ModelsConfig {
+	providers?: {
+		bailian?: {
+			apiKey?: string;
+		};
+	};
+}
+
 export class SpeechRecognizer {
 	private apiKey: string;
 
 	constructor() {
-		this.apiKey = process.env.DASHSCOPE_API_KEY || "";
+		this.apiKey = this.getApiKey();
 		if (!this.apiKey) {
-			log.logWarning("DASHSCOPE_API_KEY not set, speech recognition will be disabled");
+			log.logWarning(
+				"No API key found for speech recognition (set DASHSCOPE_API_KEY or configure bailian in models.json)",
+			);
 		}
+	}
+
+	/**
+	 * 获取 API Key
+	 * 优先级: DASHSCOPE_API_KEY 环境变量 > ~/.pi/agent/models.json 中的 bailian provider
+	 */
+	private getApiKey(): string {
+		// 1. 优先使用环境变量
+		const envKey = process.env.DASHSCOPE_API_KEY;
+		if (envKey) {
+			return envKey;
+		}
+
+		// 2. 从 models.json 读取 bailian provider 的 apiKey
+		try {
+			const modelsPath = join(homedir(), ".pi", "agent", "models.json");
+			if (existsSync(modelsPath)) {
+				const content = readFileSync(modelsPath, "utf-8");
+				const config = JSON.parse(content) as ModelsConfig;
+				const bailianKey = config?.providers?.bailian?.apiKey;
+				if (bailianKey) {
+					log.logInfo("[ASR] Using API key from models.json (bailian provider)");
+					return bailianKey;
+				}
+			}
+		} catch (error) {
+			log.logWarning("[ASR] Failed to read models.json", error instanceof Error ? error.message : String(error));
+		}
+
+		return "";
 	}
 
 	/**
@@ -44,7 +86,7 @@ export class SpeechRecognizer {
 	 */
 	async recognize(opusFilePath: string): Promise<string | null> {
 		if (!this.apiKey) {
-			log.logWarning("DASHSCOPE_API_KEY not configured, skipping speech recognition");
+			log.logWarning("No API key configured, skipping speech recognition");
 			return null;
 		}
 
