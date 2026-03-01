@@ -184,13 +184,10 @@ export class FeishuBot {
 	async start(port: number): Promise<void> {
 		// Get bot info - try to get bot user ID from bot endpoint
 		try {
-			const botInfo = await this.client.im.chat.get({
-				path: {
-					chat_id: "bot_info",
-				},
-			} as any);
-			if (botInfo.code === 0) {
-				this.botUserId = (botInfo.data as any)?.chat_id || null;
+			const botInfo = await (this.client.im as any).bot?.get?.();
+			if (botInfo?.code === 0 && botInfo?.data?.bot_id) {
+				this.botUserId = botInfo.data.bot_id;
+				log.logInfo(`Bot user ID: ${this.botUserId}`);
 			}
 		} catch {
 			// Ignore, bot user ID will be extracted from mentions
