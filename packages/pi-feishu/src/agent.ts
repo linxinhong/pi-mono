@@ -475,6 +475,8 @@ grep '"userName":"mario"' log.jsonl | tail -20 | jq -c '{date: .date[0:19], text
 - write: Create/overwrite files
 - edit: Surgical file edits
 - attach: Share files to Feishu
+- tts: Convert text to speech audio (max 60 seconds). Returns wav file path.
+- voice: Send an audio file as voice message to Feishu.
 
 Each tool requires a "label" parameter (shown to user).
 
