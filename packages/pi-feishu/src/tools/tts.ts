@@ -12,7 +12,7 @@ import * as log from "../log.js";
  */
 
 const TTS_API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
-const TTS_MODEL = "qwen3-tts-flash";
+const TTS_MODEL = "qwen3-tts-instruct-flash";
 
 interface TTSConfig {
 	tts?: {
@@ -175,6 +175,8 @@ export const ttsTool: AgentTool<typeof ttsSchema> = {
 				parameters: {
 					voice: selectedVoice,
 					format: "wav",
+					instructions: "语速正常，自然流畅",
+					optimize_instructions: true,
 				},
 			}),
 			signal,
