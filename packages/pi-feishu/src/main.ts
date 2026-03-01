@@ -365,7 +365,10 @@ const handler: FeishuHandler = {
 				}
 			}
 		} catch (err) {
-			log.logWarning(`[${event.channel}] Run error`, err instanceof Error ? err.message : String(err));
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			const errorStack = err instanceof Error ? err.stack : "No stack trace";
+			log.logWarning(`[${event.channel}] Run error`, errorMsg);
+			log.logWarning(`[${event.channel}] Error stack:`, errorStack);
 		} finally {
 			state.running = false;
 		}
