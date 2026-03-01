@@ -477,6 +477,9 @@ grep '"userName":"mario"' log.jsonl | tail -20 | jq -c '{date: .date[0:19], text
 - attach: Share files to Feishu
 
 Each tool requires a "label" parameter (shown to user).
+
+## Voice Messages
+Voice messages are automatically transcribed. If a message starts with \`[语音]\`, the transcription is already included - do NOT call transcribe again. The audio file path in attachments is kept for reference only.
 `;
 }
 
