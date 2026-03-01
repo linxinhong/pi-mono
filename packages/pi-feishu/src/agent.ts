@@ -29,7 +29,7 @@ import type { ChannelInfo, FeishuContext, UserInfo } from "./feishu.js";
 import * as log from "./log.js";
 import { createExecutor, type SandboxConfig } from "./sandbox.js";
 import type { ChannelStore } from "./store.js";
-import { createFeishuTools, setUploadFunction } from "./tools/index.js";
+import { createFeishuTools, setSendVoiceFunction, setUploadFunction } from "./tools/index.js";
 
 // Cached model - set via setModel() before use
 let resolvedModel: Model<Api> | null = null;
@@ -826,6 +826,11 @@ function createRunner(
 			setUploadFunction(async (filePath: string, title?: string) => {
 				const hostPath = translateToHostPath(filePath, channelDir, workspacePath, channelId);
 				await ctx.uploadFile(hostPath, title);
+			});
+
+			setSendVoiceFunction(async (filePath: string) => {
+				const hostPath = translateToHostPath(filePath, channelDir, workspacePath, channelId);
+				return ctx.sendVoiceMessage(hostPath);
 			});
 
 			runState.ctx = ctx;

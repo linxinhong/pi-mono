@@ -275,6 +275,10 @@ function createFeishuContext(
 			return feishu.sendImage(event.channel, imageKey);
 		},
 
+		sendVoiceMessage: async (filePath: string): Promise<string> => {
+			return feishu.sendVoiceMessage(event.channel, filePath);
+		},
+
 		setWorking: async (working: boolean) => {
 			if (!working && statusMessageId) {
 				// Update status to "completed"

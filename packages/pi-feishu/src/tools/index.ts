@@ -6,9 +6,11 @@ import { createEditTool } from "./edit.js";
 import { createMemoryTools } from "./memory.js";
 import { createReadTool } from "./read.js";
 import { transcribeTool } from "./transcribe.js";
+import { voiceTool } from "./voice.js";
 import { createWriteTool } from "./write.js";
 
 export { setUploadFunction } from "./attach.js";
+export { setSendVoiceFunction } from "./voice.js";
 
 export function createFeishuTools(executor: Executor, workspaceDir: string): AgentTool<any>[] {
 	return [
@@ -18,6 +20,7 @@ export function createFeishuTools(executor: Executor, workspaceDir: string): Age
 		createWriteTool(executor),
 		attachTool,
 		transcribeTool,
+		voiceTool,
 		...createMemoryTools(workspaceDir),
 	];
 }

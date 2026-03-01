@@ -70,6 +70,7 @@ export interface FeishuContext {
 	uploadFile: (filePath: string, title?: string) => Promise<void>;
 	uploadImage: (imagePath: string) => Promise<string>;
 	sendImage: (imageKey: string) => Promise<string>;
+	sendVoiceMessage: (filePath: string) => Promise<string>;
 	setWorking: (working: boolean) => Promise<void>;
 	deleteMessage: () => Promise<void>;
 	sendErrorCard: (message: string) => Promise<void>;
