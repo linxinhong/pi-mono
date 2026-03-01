@@ -586,6 +586,8 @@ export class FeishuBot {
 				];
 				text = "[图片]";
 			} else if (msgType === "file" || msgType === "audio" || msgType === "media") {
+				// 调试：记录飞书返回的完整文件消息内容
+				log.logInfo(`File message content: ${JSON.stringify(parsedContent)}`);
 				files = [
 					{
 						name: parsedContent.file_name,
