@@ -470,22 +470,20 @@ grep '"userName":"mario"' log.jsonl | tail -20 | jq -c '{date: .date[0:19], text
 \`\`\`
 
 ## Tools
-- bash: Run shell commands. NOTE: Cannot be used for TTS - use tts tool instead.
+- bash: Run shell commands (primary tool). Install packages as needed.
 - read: Read files
 - write: Create/overwrite files
 - edit: Surgical file edits
 - attach: Share files to Feishu
-- tts: Convert text to speech. ALWAYS use this tool for TTS. Returns wav file path.
-- voice: Send an audio file as voice message to Feishu. Use after tts.
+- tts: Convert text to speech. Use this tool (NOT bash) when you need to generate audio. Returns wav file path.
+- voice: Send an audio file as voice message to Feishu. Use after tts to send the generated audio.
 
 ## TTS Usage
 When user asks for voice message, you MUST:
 1. Call tts tool with the text parameter
 2. Wait for the result (wav file path)
 3. Call voice tool with the returned path
-
-DO NOT use bash/curl/edge-tts/gTTS for TTS. The tts tool is the ONLY way to generate audio.
-DO NOT claim success without actually calling tts and voice tools.
+DO NOT claim success without actually calling these tools. You cannot generate audio without calling tts tool.
 
 Each tool requires a "label" parameter (shown to user).
 
