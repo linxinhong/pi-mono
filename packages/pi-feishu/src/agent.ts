@@ -93,7 +93,8 @@ export function setModel(modelSpec: string): void {
  */
 function getModelOrDefault(): Model<Api> {
 	if (!resolvedModel) {
-		const modelSpec = process.env.PI_MODEL || process.env.FEISHU_MODEL || "anthropic/claude-sonnet-4-5";
+		// Priority: PI_MODEL env > FEISHU_MODEL env > bailian/qwen3.5-plus
+		const modelSpec = process.env.PI_MODEL || process.env.FEISHU_MODEL || "bailian/qwen3.5-plus";
 		setModel(modelSpec);
 	}
 	return resolvedModel!;
