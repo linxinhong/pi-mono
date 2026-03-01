@@ -18,7 +18,7 @@ export const attachTool: AgentTool<typeof attachSchema> = {
 	name: "attach",
 	label: "attach",
 	description:
-		"Attach a file to your response. Use this to share files, images, or documents with the user. Only files from /workspace/ can be attached.",
+		"Attach a file or image to your response. Supports images (jpg, png, gif, webp, etc.) and other files. Images will be displayed directly in the chat. Only files from /workspace/ can be attached.",
 	parameters: attachSchema,
 	execute: async (
 		_toolCallId: string,

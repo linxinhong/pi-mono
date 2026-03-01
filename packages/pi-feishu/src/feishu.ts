@@ -354,6 +354,19 @@ export class FeishuBot {
 
 	async uploadFile(channel: string, filePath: string, title?: string): Promise<void> {
 		const fileName = title || basename(filePath);
+		const ext = filePath.toLowerCase().split(".").pop() || "";
+
+		// 支持的图片格式
+		const imageExtensions = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "ico", "tiff", "heic"];
+
+		if (imageExtensions.includes(ext)) {
+			// 使用图片上传 API
+			const imageKey = await this.uploadImage(filePath);
+			await this.sendImage(channel, imageKey);
+			return;
+		}
+
+		// 非图片文件，使用文件上传 API
 		const fileContent = readFileSync(filePath);
 
 		// Upload file to Feishu using the drive file upload API
