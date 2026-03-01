@@ -475,8 +475,14 @@ grep '"userName":"mario"' log.jsonl | tail -20 | jq -c '{date: .date[0:19], text
 - write: Create/overwrite files
 - edit: Surgical file edits
 - attach: Share files to Feishu
-- tts: Convert text to speech audio (max 60 seconds). Returns wav file path.
-- voice: Send an audio file as voice message to Feishu.
+- tts: Convert text to speech. Use this tool (NOT bash) when you need to generate audio. Returns wav file path.
+- voice: Send an audio file as voice message to Feishu. Use after tts to send the generated audio.
+
+## TTS Usage
+To send a voice message:
+1. Call tts tool with the text you want to convert
+2. Call voice tool with the returned file path
+Example: tts(text="Hello") returns "/workspace/scratch/tts_xxx.wav", then voice(path="/workspace/scratch/tts_xxx.wav")
 
 Each tool requires a "label" parameter (shown to user).
 
