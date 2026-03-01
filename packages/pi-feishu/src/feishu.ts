@@ -625,30 +625,52 @@ export class FeishuBot {
 			files,
 		};
 
-		// Log message and process attachments
-		feishuEvent.attachments = this.logUserMessage(feishuEvent);
+		// Handle audio speech recognition - sync download for transcription
+		if (msgType === "audio" && files && files.length > 0) {
+			const audioFile = files[0];
 
-		// Handle audio speech recognition
-		if (msgType === "audio" && feishuEvent.attachments && feishuEvent.attachments.length > 0) {
-			const audioAttachment = feishuEvent.attachments[0];
-			const audioPath = join(this.workingDir, audioAttachment.local);
+			// 先发送处理中卡片
+			const statusMessageId = await this.postMessage(chatId, "[处理中……]");
 
-			// Wait for download to complete (attachments are downloaded async)
-			// Try to recognize speech after a short delay
-			await new Promise((resolve) => setTimeout(resolve, 2000));
+			// 同步下载音频文件
+			const attachment = await this.store.downloadAttachmentNow(
+				{
+					name: audioFile.name || "audio.opus",
+					file_key: audioFile.file_key!,
+					file_token: audioFile.file_token,
+					message_id: audioFile.message_id,
+					type: "audio",
+				},
+				chatId,
+				feishuEvent.ts,
+			);
 
-			if (existsSync(audioPath)) {
-				log.logInfo(`[${chatId}] Recognizing speech from audio: ${audioPath}`);
+			if (attachment) {
+				const audioPath = join(this.workingDir, attachment.local);
+				log.logInfo(`[${chatId}] Audio downloaded, starting transcription: ${audioPath}`);
+
 				const recognizedText = await this.speechRecognizer.recognize(audioPath);
 				if (recognizedText) {
 					log.logInfo(`[${chatId}] Speech recognized: ${recognizedText}`);
 					feishuEvent.text = `[语音] ${recognizedText}`;
+					// 更新状态卡片为转录结果
+					await this.updateMessage(chatId, statusMessageId, `[语音] ${recognizedText}`);
+					// 更新 attachments
+					feishuEvent.attachments = [{ original: attachment.original, local: attachment.local }];
 				} else {
 					log.logWarning(`[${chatId}] Speech recognition failed or returned empty`);
+					feishuEvent.text = "[语音]（转录失败）";
+					await this.updateMessage(chatId, statusMessageId, "[语音]（转录失败）");
+					feishuEvent.attachments = [{ original: attachment.original, local: attachment.local }];
 				}
 			} else {
-				log.logWarning(`[${chatId}] Audio file not found: ${audioPath}`);
+				log.logWarning(`[${chatId}] Audio download failed`);
+				feishuEvent.text = "[语音]（下载失败）";
+				await this.updateMessage(chatId, statusMessageId, "[语音]（下载失败）");
 			}
+		} else {
+			// Log message and process attachments (for non-audio messages)
+			feishuEvent.attachments = this.logUserMessage(feishuEvent);
 		}
 
 		// Skip old messages

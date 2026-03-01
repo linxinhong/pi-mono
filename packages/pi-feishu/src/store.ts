@@ -108,6 +108,30 @@ export class ChannelStore {
 		return attachments;
 	}
 
+	/**
+	 * 立即下载附件（同步等待完成）
+	 * 用于音频文件等需要立即使用的场景
+	 */
+	async downloadAttachmentNow(
+		file: { name: string; file_key: string; file_token?: string; message_id?: string; type?: string },
+		channelId: string,
+		timestamp: string,
+	): Promise<Attachment | null> {
+		if (!file.file_key || !file.name) return null;
+
+		const filename = this.generateLocalFilename(file.name, timestamp);
+		const localPath = `chats/${channelId}/attachments/${filename}`;
+
+		try {
+			await this.downloadAttachment(localPath, file.file_key, file.message_id, file.type);
+			return { original: file.name, local: localPath };
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			log.logWarning(`Failed to download attachment`, `${localPath}: ${errorMsg}`);
+			return null;
+		}
+	}
+
 	async logMessage(channelId: string, message: LoggedMessage): Promise<boolean> {
 		const dedupeKey = `${channelId}:${message.ts}`;
 		if (this.recentlyLogged.has(dedupeKey)) {

@@ -11,6 +11,9 @@ import * as log from "./log.js";
 
 interface ModelsConfig {
 	providers?: {
+		dashscope?: {
+			apiKey?: string;
+		};
 		bailian?: {
 			apiKey?: string;
 		};
@@ -68,7 +71,17 @@ export class SpeechRecognizer {
 				const content = readFileSync(modelsPath, "utf-8");
 				const config = JSON.parse(content) as ModelsConfig;
 
-				// 优先使用 aliyun provider
+				// 优先使用 dashscope provider（ASR 专用）
+				const dashscopeKey = config?.providers?.dashscope?.apiKey;
+				if (dashscopeKey) {
+					log.logInfo("[ASR] Using API key from models.json (dashscope provider)");
+					return {
+						apiKey: dashscopeKey,
+						baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+					};
+				}
+
+				// 回退到 aliyun provider
 				const aliyunConfig = config?.providers?.aliyun;
 				if (aliyunConfig?.apiKey) {
 					log.logInfo("[ASR] Using API key from models.json (aliyun provider)");
@@ -78,7 +91,7 @@ export class SpeechRecognizer {
 					};
 				}
 
-				// 回退到 bailian provider
+				// 最后回退到 bailian provider
 				const bailianKey = config?.providers?.bailian?.apiKey;
 				if (bailianKey) {
 					log.logInfo("[ASR] Using API key from models.json (bailian provider)");
