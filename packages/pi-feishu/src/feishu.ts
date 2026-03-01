@@ -160,7 +160,7 @@ export class FeishuBot {
 		this.handler = handler;
 		this.workingDir = config.workingDir;
 		this.store = config.store;
-		this.speechRecognizer = new SpeechRecognizer(config.appId, config.appSecret);
+		this.speechRecognizer = new SpeechRecognizer();
 		this.client = new lark.Client({
 			appId: config.appId,
 			appSecret: config.appSecret,

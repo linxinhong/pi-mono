@@ -93,6 +93,7 @@ function parseArgs(): ParsedArgs {
 			console.error("  FEISHU_APP_SECRET  - Feishu application secret");
 			console.error("  PORT               - Server port (default: 3000)");
 			console.error("  PI_MODEL           - LLM model (e.g., groq/qwen-qwq-32b)");
+			console.error("  DASHSCOPE_API_KEY  - Alibaba Cloud DashScope API key for speech recognition");
 			process.exit(0);
 		} else if (!arg.startsWith("-")) {
 			dataDir = arg;
