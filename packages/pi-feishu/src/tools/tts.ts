@@ -180,23 +180,43 @@ export const ttsTool: AgentTool<typeof ttsSchema> = {
 
 		const result = (await response.json()) as {
 			output?: {
-				audio?: string;
+				audio?: string | { url: string };
 			};
 			message?: string;
 		};
 
-		// Extract base64 audio from response
-		const audioBase64 = result?.output?.audio;
-		if (!audioBase64) {
+		// Extract audio from response (can be URL or base64)
+		const audioData = result?.output?.audio;
+		if (!audioData) {
 			throw new Error(`TTS API returned no audio: ${result?.message || "Unknown error"}`);
 		}
 
-		// Decode base64 and save to file
+		// Determine if audio is a URL object or base64 string
+		const audioUrl = typeof audioData === "string" ? null : audioData.url;
+		const audioBase64 = typeof audioData === "string" ? audioData : null;
+
+		// Prepare file path
 		ensureScratchDir();
 		const timestamp = Date.now();
 		const audioPath = join(scratchDir, `tts_${timestamp}.wav`);
 
-		const audioBuffer = Buffer.from(audioBase64, "base64");
+		let audioBuffer: Buffer;
+
+		if (audioUrl) {
+			// Download from URL
+			log.logInfo(`[TTS] Downloading audio from URL: ${audioUrl}`);
+			const audioResponse = await fetch(audioUrl, { signal });
+			if (!audioResponse.ok) {
+				throw new Error(`Failed to download audio: ${audioResponse.status}`);
+			}
+			audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+		} else if (audioBase64) {
+			// Decode base64
+			audioBuffer = Buffer.from(audioBase64, "base64");
+		} else {
+			throw new Error("TTS API returned audio in unexpected format");
+		}
+
 		writeFileSync(audioPath, audioBuffer);
 
 		log.logInfo(`[TTS] Audio saved to: ${audioPath} (${audioBuffer.length} bytes)`);
