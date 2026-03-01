@@ -22,6 +22,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { existsSync, readFileSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
+import { homedir } from "os";
 import { join } from "path";
 import { FeishuSettingsManager } from "./context.js";
 import type { ChannelInfo, FeishuContext, UserInfo } from "./feishu.js";
@@ -119,12 +120,33 @@ export interface AgentRunner {
 async function getApiKeyForModel(): Promise<string> {
 	const model = getModelOrDefault();
 	const provider = model.provider;
+
+	// Try to get API key from models.json first
+	try {
+		const modelsPath = join(homedir(), ".pi", "agent", "models.json");
+		if (existsSync(modelsPath)) {
+			const content = readFileSync(modelsPath, "utf-8");
+			const config = JSON.parse(content) as { providers?: Record<string, { apiKey?: string }> };
+			const providerKey = config?.providers?.[provider]?.apiKey;
+			if (providerKey) {
+				log.logInfo(`[Agent] Using API key from models.json (${provider})`);
+				return providerKey;
+			}
+		}
+	} catch (error) {
+		log.logWarning(
+			"[Agent] Failed to read API key from models.json",
+			error instanceof Error ? error.message : String(error),
+		);
+	}
+
+	// Fallback to ModelRegistry auth storage
 	const registry = getModelRegistry();
 	const key = await registry.authStorage.getApiKey(provider);
 	if (!key) {
 		throw new Error(
 			`No API key found for ${provider}.\n\n` +
-				`Set an API key environment variable, or configure it in ~/.pi/agent/models.json`,
+				`Use /login or set an API key environment variable. See /root/pi-mono/packages/coding-agent/docs/providers.md`,
 		);
 	}
 	return key;
