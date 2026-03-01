@@ -1,13 +1,13 @@
 import { execSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
+import OpenAI from "openai";
 import { homedir } from "os";
 import { join } from "path";
-import WebSocket from "ws";
 import * as log from "./log.js";
 
 /**
- * 阿里云 Qwen-ASR 语音识别服务
- * 文档: https://help.aliyun.com/zh/model-studio/developer-reference/qwen-asr
+ * 阿里云 Qwen-ASR 语音识别服务（文件转写方式）
+ * 文档：https://help.aliyun.com/zh/model-studio/developer-reference/qwen-asr
  */
 
 interface ModelsConfig {
@@ -17,41 +17,52 @@ interface ModelsConfig {
 		};
 		aliyun?: {
 			apiKey?: string;
+			baseUrl?: string;
 		};
 	};
 }
 
 export class SpeechRecognizer {
 	private apiKey: string;
+	private baseUrl: string;
 
 	constructor() {
-		this.apiKey = this.getApiKey();
+		const config = this.getConfig();
+		this.apiKey = config.apiKey;
+		this.baseUrl = config.baseUrl;
 		if (!this.apiKey) {
 			log.logWarning(
-				"No API key found for speech recognition (set DASHSCOPE_API_KEY or configure bailian in models.json)",
+				"No API key found for speech recognition (set DASHSCOPE_API_KEY/ALIYUN_API_KEY or configure aliyun/bailian in models.json)",
 			);
 		}
 	}
 
 	/**
-	 * 获取 API Key
-	 * 优先级：DASHSCOPE_API_KEY 环境变量 > ALIYUN_API_KEY 环境变量 > ~/.pi/agent/models.json 中的 aliyun provider > bailian provider
+	 * 获取配置
+	 * 优先级：环境变量 > ~/.pi/agent/models.json 中的 aliyun provider > bailian provider
 	 */
-	private getApiKey(): string {
+	private getConfig(): { apiKey: string; baseUrl: string } {
 		// 1. 优先使用环境变量 DASHSCOPE_API_KEY
 		const envKey = process.env.DASHSCOPE_API_KEY;
 		if (envKey) {
-			return envKey;
+			log.logInfo("[ASR] Using API key from DASHSCOPE_API_KEY environment variable");
+			return {
+				apiKey: envKey,
+				baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+			};
 		}
 
 		// 2. 使用环境变量 ALIYUN_API_KEY
 		const aliyunEnvKey = process.env.ALIYUN_API_KEY;
 		if (aliyunEnvKey) {
 			log.logInfo("[ASR] Using API key from ALIYUN_API_KEY environment variable");
-			return aliyunEnvKey;
+			return {
+				apiKey: aliyunEnvKey,
+				baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+			};
 		}
 
-		// 3. 从 models.json 读取 aliyun provider 的 apiKey
+		// 3. 从 models.json 读取配置
 		try {
 			const modelsPath = join(homedir(), ".pi", "agent", "models.json");
 			if (existsSync(modelsPath)) {
@@ -59,24 +70,30 @@ export class SpeechRecognizer {
 				const config = JSON.parse(content) as ModelsConfig;
 
 				// 优先使用 aliyun provider
-				const aliyunKey = config?.providers?.aliyun?.apiKey;
-				if (aliyunKey) {
+				const aliyunConfig = config?.providers?.aliyun;
+				if (aliyunConfig?.apiKey) {
 					log.logInfo("[ASR] Using API key from models.json (aliyun provider)");
-					return aliyunKey;
+					return {
+						apiKey: aliyunConfig.apiKey,
+						baseUrl: aliyunConfig.baseUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1",
+					};
 				}
 
 				// 回退到 bailian provider
 				const bailianKey = config?.providers?.bailian?.apiKey;
 				if (bailianKey) {
 					log.logInfo("[ASR] Using API key from models.json (bailian provider)");
-					return bailianKey;
+					return {
+						apiKey: bailianKey,
+						baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+					};
 				}
 			}
 		} catch (error) {
 			log.logWarning("[ASR] Failed to read models.json", error instanceof Error ? error.message : String(error));
 		}
 
-		return "";
+		return { apiKey: "", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" };
 	}
 
 	/**
@@ -101,7 +118,15 @@ export class SpeechRecognizer {
 	}
 
 	/**
-	 * 调用阿里云 Qwen-ASR WebSocket API 识别语音
+	 * 将音频文件编码为 base64
+	 */
+	private encodeToBase64(filePath: string): string {
+		const buffer = readFileSync(filePath);
+		return buffer.toString("base64");
+	}
+
+	/**
+	 * 调用阿里云 Qwen-ASR API 识别语音（文件转写方式）
 	 */
 	async recognize(opusFilePath: string): Promise<string | null> {
 		if (!this.apiKey) {
@@ -118,150 +143,65 @@ export class SpeechRecognizer {
 			return null;
 		}
 
-		return new Promise((resolve, reject) => {
-			const model = "qwen3-asr-flash-realtime";
-			const baseUrl = "wss://dashscope.aliyuncs.com/api-ws/v1/realtime";
-			const url = `${baseUrl}?model=${model}`;
-
-			let transcript = "";
-			let isFinished = false;
-
-			const ws = new WebSocket(url, {
-				headers: {
-					Authorization: `Bearer ${this.apiKey}`,
-					"OpenAI-Beta": "realtime=v1",
-				},
-			});
-
-			const cleanup = () => {
-				if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-					ws.close(1000, "ASR finished");
-				}
-			};
-
-			// 超时处理
-			const timeout = setTimeout(() => {
-				if (!isFinished) {
-					log.logWarning("ASR WebSocket timeout");
-					cleanup();
-					resolve(transcript || null);
-				}
-			}, 30000);
-
-			ws.on("open", () => {
-				log.logInfo("[ASR] WebSocket connected");
-
-				// 发送会话配置（VAD 模式）
-				const sessionUpdate = {
-					event_id: `event_${Date.now()}`,
-					type: "session.update",
-					session: {
-						modalities: ["text"],
-						input_audio_format: "pcm",
-						sample_rate: 16000,
-						input_audio_transcription: {
-							language: "zh",
-						},
-						turn_detection: {
-							type: "server_vad",
-							threshold: 0.0,
-							silence_duration_ms: 400,
-						},
-					},
-				};
-				ws.send(JSON.stringify(sessionUpdate));
-
-				// 延迟后发送音频
-				setTimeout(() => {
-					this.sendAudioFile(ws, pcmPath);
-				}, 1000);
-			});
-
-			ws.on("message", (message) => {
-				try {
-					const data = JSON.parse(message.toString());
-
-					// 收到转录结果
-					if (data.type === "input_audio_buffer.speech_started") {
-						log.logInfo("[ASR] Speech started");
-					} else if (data.type === "conversation.item.input_audio_transcription.completed") {
-						const text = data.transcript || "";
-						transcript += text;
-						log.logInfo(`[ASR] Partial transcript: ${text}`);
-					} else if (data.type === "session.finished") {
-						isFinished = true;
-						const finalTranscript = data.transcript || transcript;
-						log.logInfo(`[ASR] Final transcript: ${finalTranscript}`);
-						clearTimeout(timeout);
-						cleanup();
-						resolve(finalTranscript || null);
-					}
-				} catch (_e) {
-					log.logWarning("[ASR] Failed to parse message", message.toString().substring(0, 200));
-				}
-			});
-
-			ws.on("error", (err) => {
-				log.logWarning("[ASR] WebSocket error", err.message);
-				clearTimeout(timeout);
-				cleanup();
-				reject(err);
-			});
-
-			ws.on("close", (code, reason) => {
-				log.logInfo(`[ASR] WebSocket closed: ${code} - ${reason}`);
-				clearTimeout(timeout);
-				if (!isFinished) {
-					resolve(transcript || null);
-				}
-			});
-		});
-	}
-
-	/**
-	 * 发送音频文件流
-	 */
-	private sendAudioFile(ws: WebSocket, pcmPath: string): void {
 		try {
-			const buffer = readFileSync(pcmPath);
-			let offset = 0;
-			const chunkSize = 3200; // 约 0.1s 的 PCM16 音频
+			// 将 PCM 文件转换为 WAV 格式（阿里云 ASR 需要 WAV 格式）
+			const wavPath = opusFilePath.replace(/\.[^.]+$/, ".wav");
+			execSync(`ffmpeg -y -f s16le -ar 16000 -ac 1 -i "${pcmPath}" -ar 16000 -ac 1 "${wavPath}"`, {
+				stdio: "ignore",
+			});
 
-			const sendChunk = () => {
-				if (ws.readyState !== WebSocket.OPEN) {
-					return;
-				}
+			if (!existsSync(wavPath)) {
+				log.logWarning("Failed to create WAV file");
+				return null;
+			}
 
-				if (offset >= buffer.length) {
-					// 发送完成事件
-					const finishEvent = {
-						event_id: `event_${Date.now()}`,
-						type: "session.finish",
-					};
-					ws.send(JSON.stringify(finishEvent));
-					log.logInfo("[ASR] Audio sent, waiting for transcription");
-					return;
-				}
+			// 使用 OpenAI 兼容 API 调用
+			const client = new OpenAI({
+				apiKey: this.apiKey,
+				baseURL: this.baseUrl,
+			});
 
-				const chunk = buffer.slice(offset, offset + chunkSize);
-				offset += chunkSize;
+			// 将音频文件编码为 base64
+			const audioDataBase64 = this.encodeToBase64(wavPath);
 
-				const encoded = chunk.toString("base64");
-				const appendEvent = {
-					event_id: `event_${Date.now()}`,
-					type: "input_audio_buffer.append",
-					audio: encoded,
-				};
+			log.logInfo("[ASR] Sending audio to Qwen-ASR for transcription...");
 
-				ws.send(JSON.stringify(appendEvent));
+			// 调用 ASR API
+			const completion = await client.chat.completions.create({
+				model: "qwen3-asr-flash",
+				messages: [
+					{
+						role: "user",
+						content: [
+							{
+								type: "input_audio",
+								input_audio: {
+									data: `data:audio/wav;base64,${audioDataBase64}`,
+								},
+							} as any,
+						],
+					},
+				] as any,
+				extra_body: {
+					asr_options: {
+						language: "zh",
+						enable_itn: false,
+					},
+				},
+			} as any);
 
-				// 模拟实时发送
-				setTimeout(sendChunk, 100);
-			};
+			const transcript = completion.choices[0].message.content || "";
 
-			sendChunk();
+			if (transcript) {
+				log.logInfo(`[ASR] Transcription result: ${transcript}`);
+			} else {
+				log.logWarning("[ASR] No transcription result");
+			}
+
+			return transcript || null;
 		} catch (error) {
-			log.logWarning("[ASR] Failed to read PCM file", error instanceof Error ? error.message : String(error));
+			log.logWarning("[ASR] Failed to transcribe audio", error instanceof Error ? error.message : String(error));
+			return null;
 		}
 	}
 }
