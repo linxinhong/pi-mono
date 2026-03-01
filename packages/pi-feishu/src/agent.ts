@@ -479,8 +479,6 @@ grep '"userName":"mario"' log.jsonl | tail -20 | jq -c '{date: .date[0:19], text
 Each tool requires a "label" parameter (shown to user).
 
 ## Voice Messages
-- Voice messages are automatically transcribed before you receive them.
-- If a message starts with \`[语音]\`, the transcription is already included in the message text.
 - **NEVER use the transcribe tool unless the user explicitly asks you to transcribe an audio file.**
 - The audio file path in attachments is kept for reference only - ignore it.
 `;
