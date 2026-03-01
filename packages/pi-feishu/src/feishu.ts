@@ -71,6 +71,7 @@ export interface FeishuContext {
 	sendImage: (imageKey: string) => Promise<string>;
 	setWorking: (working: boolean) => Promise<void>;
 	deleteMessage: () => Promise<void>;
+	sendErrorCard: (message: string) => Promise<void>;
 }
 
 export interface FeishuHandler {

@@ -35,6 +35,7 @@ interface FeishuChannelConfig {
 	port?: number;
 	dataDir?: string;
 	model?: string;
+	showThinking?: boolean;
 }
 
 interface ChannelsConfig {
@@ -157,13 +158,15 @@ interface ChannelState {
 
 const channelStates = new Map<string, ChannelState>();
 
+const SHOW_THINKING = feishuConfig?.showThinking ?? false;
+
 function getState(channelId: string): ChannelState {
 	let state = channelStates.get(channelId);
 	if (!state) {
 		const channelDir = join(workspaceDir, CHANNELS_SUBDIR, channelId);
 		state = {
 			running: false,
-			runner: getOrCreateRunner(sandbox, channelId, channelDir),
+			runner: getOrCreateRunner(sandbox, channelId, channelDir, SHOW_THINKING),
 			store: sharedStore,
 			stopRequested: false,
 		};
@@ -281,6 +284,28 @@ function createFeishuContext(event: FeishuEvent, feishu: FeishuBot, _state: Chan
 				await feishu.deleteMessage(event.channel, responseMessageId);
 				responseMessageId = null;
 			}
+		},
+
+		sendErrorCard: async (message: string) => {
+			await feishu.sendCard(event.channel, {
+				schema: "2.0",
+				config: { width_mode: "fill" },
+				body: {
+					elements: [
+						{
+							tag: "div",
+							text: {
+								tag: "lark_md",
+								content: `**Error**\n\n${message}`,
+							},
+						},
+					],
+				},
+				header: {
+					template: "red",
+					title: { tag: "plain_text", content: "Error" },
+				},
+			} as any);
 		},
 	};
 }

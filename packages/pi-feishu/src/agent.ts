@@ -506,16 +506,26 @@ function _formatToolArgsForFeishu(_toolName: string, args: Record<string, unknow
 
 const channelRunners = new Map<string, AgentRunner>();
 
-export function getOrCreateRunner(sandboxConfig: SandboxConfig, channelId: string, channelDir: string): AgentRunner {
+export function getOrCreateRunner(
+	sandboxConfig: SandboxConfig,
+	channelId: string,
+	channelDir: string,
+	showThinking: boolean,
+): AgentRunner {
 	const existing = channelRunners.get(channelId);
 	if (existing) return existing;
 
-	const runner = createRunner(sandboxConfig, channelId, channelDir);
+	const runner = createRunner(sandboxConfig, channelId, channelDir, showThinking);
 	channelRunners.set(channelId, runner);
 	return runner;
 }
 
-function createRunner(sandboxConfig: SandboxConfig, channelId: string, channelDir: string): AgentRunner {
+function createRunner(
+	sandboxConfig: SandboxConfig,
+	channelId: string,
+	channelDir: string,
+	showThinking: boolean,
+): AgentRunner {
 	const executor = createExecutor(sandboxConfig);
 	// channelDir = /workspace/oc_xxx, 需要获取 /workspace
 	const workspacePath = executor.getWorkspacePath(join(channelDir, "..", ".."));
@@ -684,9 +694,11 @@ function createRunner(sandboxConfig: SandboxConfig, channelId: string, channelDi
 
 				const text = textParts.join("\n");
 
-				for (const thinking of thinkingParts) {
-					log.logThinking(logCtx, thinking);
-					queue.enqueueMessage(`_${thinking}_`, "main", "thinking main");
+				if (showThinking) {
+					for (const thinking of thinkingParts) {
+						log.logThinking(logCtx, thinking);
+						queue.enqueueMessage(`_${thinking}_`, "main", "thinking main");
+					}
 				}
 
 				if (text.trim()) {
@@ -865,7 +877,7 @@ function createRunner(sandboxConfig: SandboxConfig, channelId: string, channelDi
 			if (runState.stopReason === "error" && runState.errorMessage) {
 				try {
 					await ctx.replaceMessage("_Sorry, something went wrong_");
-					await ctx.respondInThread(`_Error: ${runState.errorMessage}_`);
+					await ctx.sendErrorCard(runState.errorMessage);
 				} catch (err) {
 					const errMsg = err instanceof Error ? err.message : String(err);
 					log.logWarning("Failed to post error message", errMsg);
