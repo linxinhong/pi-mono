@@ -353,6 +353,7 @@ const handler: FeishuHandler = {
 		state.running = true;
 		state.stopRequested = false;
 
+		const startTime = Date.now();
 		log.logInfo(`[${event.channel}] Starting run: ${event.text.substring(0, 50)}`);
 
 		// 立即发送"处理中"卡片，让用户知道已收到消息
@@ -362,6 +363,10 @@ const handler: FeishuHandler = {
 		let statusMessageId: string | null = null;
 		try {
 			statusMessageId = await feishu.postMessage(event.channel, initialDisplayText);
+			const sendCardTime = Date.now();
+			log.logInfo(
+				`[${event.channel}] Initial card sent in ${sendCardTime - startTime}ms, messageId: ${statusMessageId}`,
+			);
 		} catch (err) {
 			log.logWarning(
 				`[${event.channel}] Failed to send initial status`,
@@ -392,6 +397,8 @@ const handler: FeishuHandler = {
 			log.logWarning(`[${event.channel}] Error stack:`, errorStack);
 		} finally {
 			state.running = false;
+			const totalTime = Date.now() - startTime;
+			log.logInfo(`[${event.channel}] Run completed in ${totalTime}ms`);
 		}
 	},
 };
