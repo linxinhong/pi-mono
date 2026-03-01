@@ -348,15 +348,10 @@ const handler: FeishuHandler = {
 	},
 
 	async handleEvent(event: FeishuEvent, feishu: FeishuBot, isEvent?: boolean): Promise<void> {
-		const state = getState(event.channel);
-
-		state.running = true;
-		state.stopRequested = false;
-
 		const startTime = Date.now();
 		log.logInfo(`[${event.channel}] Starting run: ${event.text.substring(0, 50)}`);
 
-		// 立即发送"处理中"卡片，让用户知道已收到消息
+		// 立即发送"处理中"卡片，让用户知道已收到消息（在获取 state 之前，避免文件 I/O 延迟）
 		const eventFilename = isEvent ? event.text.match(/^\[EVENT:([^:]+):/)?.[1] : undefined;
 		const initialStatusText = eventFilename ? `Starting event: ${eventFilename}` : "";
 		const initialDisplayText = eventFilename ? `🤔 处理中……\n${initialStatusText}` : "🤔 处理中……";
@@ -373,6 +368,11 @@ const handler: FeishuHandler = {
 				err instanceof Error ? err.message : String(err),
 			);
 		}
+
+		// 获取或创建 channel state（包含文件 I/O 操作）
+		const state = getState(event.channel);
+		state.running = true;
+		state.stopRequested = false;
 
 		try {
 			const ctx = createFeishuContext(event, feishu, state, isEvent, statusMessageId);
