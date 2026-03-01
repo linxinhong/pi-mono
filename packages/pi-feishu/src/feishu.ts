@@ -559,7 +559,13 @@ export class FeishuBot {
 			} else if (msgType === "post") {
 				// Rich text message
 				text = this.extractTextFromPost(parsedContent);
-			} else if (msgType === "file" || msgType === "image" || msgType === "audio" || msgType === "media") {
+			} else if (msgType === "image") {
+				// 图片消息 - 暂时不下载，只记录
+				const imageKey = parsedContent.image_key || "";
+				text = `[图片: ${imageKey}]`;
+				// 图片需要通过消息资源 API 下载，暂时跳过
+				files = undefined;
+			} else if (msgType === "file" || msgType === "audio" || msgType === "media") {
 				files = [
 					{
 						name: parsedContent.file_name,
@@ -567,7 +573,7 @@ export class FeishuBot {
 						file_token: parsedContent.file_token,
 					},
 				];
-				text = parsedContent.file_name || "";
+				text = parsedContent.file_name || "[文件]";
 			}
 		} catch {
 			text = content;
