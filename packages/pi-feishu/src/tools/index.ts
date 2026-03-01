@@ -5,6 +5,7 @@ import { createBashTool } from "./bash.js";
 import { createEditTool } from "./edit.js";
 import { createMemoryTools } from "./memory.js";
 import { createReadTool } from "./read.js";
+import { transcribeTool } from "./transcribe.js";
 import { createWriteTool } from "./write.js";
 
 export { setUploadFunction } from "./attach.js";
@@ -16,6 +17,7 @@ export function createFeishuTools(executor: Executor, workspaceDir: string): Age
 		createEditTool(executor),
 		createWriteTool(executor),
 		attachTool,
+		transcribeTool,
 		...createMemoryTools(workspaceDir),
 	];
 }
