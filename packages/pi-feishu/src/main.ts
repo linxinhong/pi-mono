@@ -187,8 +187,14 @@ function getState(channelId: string): ChannelState {
 // Create FeishuContext adapter
 // ============================================================================
 
-function createFeishuContext(event: FeishuEvent, feishu: FeishuBot, _state: ChannelState, isEvent?: boolean) {
-	let statusMessageId: string | null = null; // Status message for thinking progress
+function createFeishuContext(
+	event: FeishuEvent,
+	feishu: FeishuBot,
+	_state: ChannelState,
+	isEvent?: boolean,
+	initialStatusMessageId?: string | null,
+) {
+	let statusMessageId: string | null = initialStatusMessageId || null; // Status message for thinking progress
 	let responseMessageId: string | null = null; // Final response message
 	const threadMessageIds: string[] = [];
 	let statusText = "";
@@ -249,6 +255,7 @@ function createFeishuContext(event: FeishuEvent, feishu: FeishuBot, _state: Chan
 		},
 
 		setTyping: async (isTyping: boolean) => {
+			// 如果已经有 statusMessageId（在 handleEvent 开始时创建），则跳过
 			if (isTyping && !statusMessageId) {
 				statusText = eventFilename ? `Starting event: ${eventFilename}` : "";
 				const displayText = eventFilename ? `🤔 处理中……\n${statusText}` : "🤔 处理中……";
@@ -348,8 +355,22 @@ const handler: FeishuHandler = {
 
 		log.logInfo(`[${event.channel}] Starting run: ${event.text.substring(0, 50)}`);
 
+		// 立即发送"处理中"卡片，让用户知道已收到消息
+		const eventFilename = isEvent ? event.text.match(/^\[EVENT:([^:]+):/)?.[1] : undefined;
+		const initialStatusText = eventFilename ? `Starting event: ${eventFilename}` : "";
+		const initialDisplayText = eventFilename ? `🤔 处理中……\n${initialStatusText}` : "🤔 处理中……";
+		let statusMessageId: string | null = null;
 		try {
-			const ctx = createFeishuContext(event, feishu, state, isEvent);
+			statusMessageId = await feishu.postMessage(event.channel, initialDisplayText);
+		} catch (err) {
+			log.logWarning(
+				`[${event.channel}] Failed to send initial status`,
+				err instanceof Error ? err.message : String(err),
+			);
+		}
+
+		try {
+			const ctx = createFeishuContext(event, feishu, state, isEvent, statusMessageId);
 
 			await ctx.setTyping(true);
 			await ctx.setWorking(true);
