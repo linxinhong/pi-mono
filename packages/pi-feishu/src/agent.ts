@@ -1014,10 +1014,28 @@ function loadHistoryFromLog(
 				const text = logMsg.text || "";
 
 				if (logMsg.isBot) {
-					// Bot message
+					// Bot message - add default usage to prevent errors
 					messages.push({
 						role: "assistant",
 						content: [{ type: "text", text }],
+						api: "unknown",
+						provider: "unknown",
+						model: "unknown",
+						usage: {
+							input: 0,
+							output: 0,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 0,
+							cost: {
+								input: 0,
+								output: 0,
+								cacheRead: 0,
+								cacheWrite: 0,
+								total: 0,
+							},
+						},
+						stopReason: "stop",
 						timestamp: msgTime,
 					} as AssistantMessage);
 				} else {
