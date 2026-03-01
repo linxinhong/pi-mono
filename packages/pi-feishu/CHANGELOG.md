@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- TTS tool: convert text to speech using Qwen3-TTS API, generates wav files that can be sent via voice tool
 - Initial release of pi-feishu, a Feishu (Lark) bot port of pi-mom
 - Webhook-based event handling for Feishu platform
 - Support for group @mentions and direct messages
