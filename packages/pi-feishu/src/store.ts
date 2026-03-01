@@ -230,8 +230,8 @@ export class ChannelStore {
 
 		let url: string;
 		if (type === "image" && messageId) {
-			// 图片使用消息资源 API
-			url = `https://open.feishu.cn/open-apis/im/v1/messages/${messageId}/resources/${fileKey}`;
+			// 图片使用消息资源 API，需要指定 type=image
+			url = `https://open.feishu.cn/open-apis/im/v1/messages/${messageId}/resources/${fileKey}?type=image`;
 		} else {
 			// 文件使用消息资源 API（file_key 就是 message_id）
 			url = `https://open.feishu.cn/open-apis/im/v1/messages/${fileKey}/resources`;
