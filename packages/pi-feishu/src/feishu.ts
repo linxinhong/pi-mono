@@ -588,16 +588,19 @@ export class FeishuBot {
 			} else if (msgType === "file" || msgType === "audio" || msgType === "media") {
 				// 调试：记录飞书返回的完整文件消息内容
 				log.logInfo(`File message content: ${JSON.stringify(parsedContent)}`);
+				// 音频消息可能没有 file_name，使用 file_key 生成默认文件名
+				const fileName =
+					parsedContent.file_name || `audio_${parsedContent.file_key}.${msgType === "audio" ? "opus" : "file"}`;
 				files = [
 					{
-						name: parsedContent.file_name,
+						name: fileName,
 						file_key: parsedContent.file_key,
 						file_token: parsedContent.file_token,
 						message_id: messageId,
 						type: "file",
 					},
 				];
-				text = parsedContent.file_name || "[文件]";
+				text = parsedContent.file_name || "[语音]";
 			}
 		} catch {
 			text = content;
