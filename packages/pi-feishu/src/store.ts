@@ -84,7 +84,7 @@ export class ChannelStore {
 			}
 
 			const filename = this.generateLocalFilename(file.name, timestamp);
-			const localPath = `${channelId}/attachments/${filename}`;
+			const localPath = `chats/${channelId}/attachments/${filename}`;
 
 			attachments.push({
 				original: file.name,
