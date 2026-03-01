@@ -409,6 +409,46 @@ export class FeishuBot {
 	}
 
 	/**
+	 * 发送语音消息
+	 * @param channel 频道 ID
+	 * @param filePath 音频文件路径
+	 * @returns 消息 ID
+	 */
+	async sendVoiceMessage(channel: string, filePath: string): Promise<string> {
+		const fileName = basename(filePath);
+		const fileContent = readFileSync(filePath);
+
+		// 上传音频文件
+		const uploadResult = await (this.client.im.file as any).create({
+			data: {
+				file_type: "opus",
+				file_name: fileName,
+				file: fileContent,
+			},
+		});
+
+		if (!uploadResult || !uploadResult.file_key) {
+			throw new Error("Failed to upload audio file: no file_key returned");
+		}
+
+		// 发送语音消息
+		const result = await this.client.im.message.create({
+			params: { receive_id_type: "chat_id" },
+			data: {
+				receive_id: channel,
+				msg_type: "audio",
+				content: JSON.stringify({ file_key: uploadResult.file_key }),
+			},
+		});
+
+		if (result.code !== 0) {
+			throw new Error(`Failed to send voice message: ${result.msg}`);
+		}
+
+		return result.data?.message_id || "";
+	}
+
+	/**
 	 * 上传图片到飞书
 	 * @param imagePath 图片文件路径
 	 * @returns image_key
