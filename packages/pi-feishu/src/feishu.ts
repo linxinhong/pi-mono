@@ -652,13 +652,14 @@ export class FeishuBot {
 					feishuEvent.text = `[语音] ${recognizedText}`;
 					// 更新状态卡片为转录结果
 					await this.updateMessage(chatId, statusMessageId, `[语音] ${recognizedText}`);
-					// 更新 attachments
-					feishuEvent.attachments = [{ original: attachment.original, local: attachment.local }];
+					// 转录成功，不保留音频附件，避免 agent 重复调用 transcribe
+					feishuEvent.attachments = [];
 				} else {
 					log.logWarning(`[${chatId}] Speech recognition failed or returned empty`);
 					feishuEvent.text = "[语音]（转录失败）";
 					await this.updateMessage(chatId, statusMessageId, "[语音]（转录失败）");
-					feishuEvent.attachments = [{ original: attachment.original, local: attachment.local }];
+					// 转录失败，也不保留附件
+					feishuEvent.attachments = [];
 				}
 			} else {
 				log.logWarning(`[${chatId}] Audio download failed`);
