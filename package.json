@@ -1,6 +1,6 @@
 {
 	"name": "@mariozechner/pi-feishu",
-	"version": "0.55.3",
+	"version": "1.0.0",
 	"description": "Feishu bot that delegates messages to the pi coding agent",
 	"type": "module",
 	"bin": {
