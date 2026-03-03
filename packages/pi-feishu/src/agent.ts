@@ -421,6 +421,7 @@ function createRunner(
 ): AgentRunner {
 	// Helper function to log build prompt to file
 	function logBuildPromptToFile(systemPrompt: string, channelName?: string, userName?: string): void {
+		log.logInfo(`[logBuildPromptToFile] logBuildPrompt=${logBuildPrompt}, channelName=${channelName}`);
 		if (!logBuildPrompt) return;
 
 		try {
