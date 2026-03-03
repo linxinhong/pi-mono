@@ -280,6 +280,18 @@ function loadFeishuSkills(channelDir: string, workspacePath: string): Skill[] {
 	return Array.from(skillMap.values());
 }
 
+/**
+ * buildSystemPrompt 的额外选项
+ */
+interface BuildSystemPromptOptions {
+	/** 用户名 */
+	userName?: string;
+	/** 频道名 */
+	channelName?: string;
+	/** 提示词模式 */
+	promptMode?: "full" | "minimal" | "compact";
+}
+
 function buildSystemPrompt(
 	workspacePath: string,
 	channelId: string,
@@ -288,10 +300,12 @@ function buildSystemPrompt(
 	channels: ChannelInfo[],
 	users: UserInfo[],
 	skills: Skill[],
+	options: BuildSystemPromptOptions = {},
 ): string {
 	const channelPath = `${workspacePath}/${channelId}`;
 	const isDocker = sandboxConfig.type === "docker";
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const currentDate = new Date().toISOString().split("T")[0];
 
 	const channelMappings =
 		channels.length > 0 ? channels.map((c) => `${c.id}\t#${c.name}`).join("\n") : "(no channels loaded)";
@@ -301,12 +315,9 @@ function buildSystemPrompt(
 
 	const envDescription = isDocker
 		? `You are running inside a Docker container (Alpine Linux).
-- Bash working directory: / (use cd or absolute paths)
-- Install tools with: apk add <package>
-- Your changes persist across sessions`
+- Bash working directory: / (use cd or absolute paths)`
 		: `You are running directly on the host machine.
-- Bash working directory: ${process.cwd()}
-- Be careful with system modifications`;
+- Bash working directory: ${process.cwd()}`;
 
 	const skillsFormatted = skills.length > 0 ? formatSkillsForPrompt(skills) : "(no skills installed yet)";
 
@@ -328,6 +339,10 @@ function buildSystemPrompt(
 		envDescription,
 		isDocker,
 		timezone,
+		currentDate,
+		userName: options.userName,
+		channelName: options.channelName,
+		promptMode: options.promptMode || "full",
 	};
 
 	return renderPrompt(template, context);
@@ -457,7 +472,9 @@ function createRunner(
 
 	const memory = getMemory(channelDir);
 	const skills = loadFeishuSkills(channelDir, workspacePath);
-	const systemPrompt = buildSystemPrompt(workspacePath, channelId, memory, sandboxConfig, [], [], skills);
+	const systemPrompt = buildSystemPrompt(workspacePath, channelId, memory, sandboxConfig, [], [], skills, {
+		promptMode: "full",
+	});
 
 	const contextFile = join(channelDir, "context.jsonl");
 	const sessionManager = SessionManager.open(contextFile, channelDir);
@@ -699,6 +716,10 @@ function createRunner(
 				ctx.channels,
 				ctx.users,
 				skills,
+				{
+					userName: ctx.message.userName,
+					channelName: ctx.channelName,
+				},
 			);
 			session.agent.setSystemPrompt(systemPrompt);
 			logBuildPromptToFile(systemPrompt, ctx.channelName, ctx.message.userName);
