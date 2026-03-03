@@ -20,7 +20,7 @@ import {
 	SessionManager,
 	type Skill,
 } from "@mariozechner/pi-coding-agent";
-import { existsSync, readFileSync } from "fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
@@ -401,11 +401,12 @@ export function getOrCreateRunner(
 	channelDir: string,
 	showThinking: boolean,
 	maxHistoryMessages: number = 20,
+	logBuildPrompt: boolean = false,
 ): AgentRunner {
 	const existing = channelRunners.get(channelId);
 	if (existing) return existing;
 
-	const runner = createRunner(sandboxConfig, channelId, channelDir, showThinking, maxHistoryMessages);
+	const runner = createRunner(sandboxConfig, channelId, channelDir, showThinking, maxHistoryMessages, logBuildPrompt);
 	channelRunners.set(channelId, runner);
 	return runner;
 }
@@ -416,7 +417,37 @@ function createRunner(
 	channelDir: string,
 	showThinking: boolean,
 	maxHistoryMessages: number = 20,
+	logBuildPrompt: boolean = false,
 ): AgentRunner {
+	// Helper function to log build prompt to file
+	function logBuildPromptToFile(systemPrompt: string, channelName?: string, userName?: string): void {
+		if (!logBuildPrompt) return;
+
+		try {
+			const logDir = join(homedir(), ".pi", "feishu", "log");
+			if (!existsSync(logDir)) {
+				mkdirSync(logDir, { recursive: true });
+			}
+			const logPath = join(logDir, "buildprompt.log");
+
+			const now = new Date();
+			const pad = (n: number) => n.toString().padStart(2, "0");
+			const offset = -now.getTimezoneOffset();
+			const offsetSign = offset >= 0 ? "+" : "-";
+			const offsetHours = pad(Math.floor(Math.abs(offset) / 60));
+			const offsetMins = pad(Math.abs(offset) % 60);
+			const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${offsetSign}${offsetHours}:${offsetMins}`;
+
+			const channelInfo = channelName ? `${channelId} (#${channelName}:${userName || "unknown"})` : channelId;
+
+			const logEntry = `\n================================================================================\n[${timestamp}] Channel: ${channelInfo}\n================================================================================\n${systemPrompt}\n`;
+
+			appendFileSync(logPath, logEntry, "utf-8");
+		} catch (err) {
+			log.logWarning("Failed to log build prompt", err instanceof Error ? err.message : String(err));
+		}
+	}
+
 	const executor = createExecutor(sandboxConfig);
 	// channelDir = /workspace/oc_xxx, 需要获取 /workspace
 	const workspacePath = executor.getWorkspacePath(join(channelDir, "..", ".."));
@@ -669,6 +700,7 @@ function createRunner(
 				skills,
 			);
 			session.agent.setSystemPrompt(systemPrompt);
+			logBuildPromptToFile(systemPrompt, ctx.channelName, ctx.message.userName);
 
 			setUploadFunction(async (filePath: string, title?: string) => {
 				const hostPath = translateToHostPath(filePath, channelDir, workspacePath, channelId);

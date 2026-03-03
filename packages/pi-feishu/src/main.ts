@@ -42,6 +42,11 @@ interface FeishuChannelConfig {
 	 * Default: 20. Set to 0 to disable history loading.
 	 */
 	maxHistoryMessages?: number;
+	/**
+	 * Log build prompt to ~/.pi/feishu/log/buildprompt.log for debugging.
+	 * Default: false
+	 */
+	logBuildPrompt?: boolean;
 }
 
 interface ChannelsConfig {
@@ -167,6 +172,7 @@ const channelStates = new Map<string, ChannelState>();
 
 const SHOW_THINKING = feishuConfig?.showThinking ?? false;
 const MAX_HISTORY_MESSAGES = feishuConfig?.maxHistoryMessages ?? 5;
+const LOG_BUILD_PROMPT = feishuConfig?.logBuildPrompt ?? false;
 
 function getState(channelId: string): ChannelState {
 	let state = channelStates.get(channelId);
@@ -174,7 +180,7 @@ function getState(channelId: string): ChannelState {
 		const channelDir = join(workspaceDir, CHANNELS_SUBDIR, channelId);
 		state = {
 			running: false,
-			runner: getOrCreateRunner(sandbox, channelId, channelDir, SHOW_THINKING, MAX_HISTORY_MESSAGES),
+			runner: getOrCreateRunner(sandbox, channelId, channelDir, SHOW_THINKING, MAX_HISTORY_MESSAGES, LOG_BUILD_PROMPT),
 			store: sharedStore,
 			stopRequested: false,
 		};
